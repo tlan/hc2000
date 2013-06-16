@@ -1,0 +1,121 @@
+#!/usr/bin/python
+
+import argparse
+import boto.ec2
+import re
+import os
+import yaml
+
+def _load_definition(filename):
+    with open(filename) as f:
+        return yaml.safe_load(f)
+
+def _remap_key(src, src_key, dst, dst_key):
+    if src_key in src:
+        dst[dst_key] = src[src_key]
+
+def _map_attribute_to_key(obj, attr, dst, dst_key):
+    try:
+        dst[dst_key] = getattr(obj, attr)
+    except AttributeError:
+        pass
+
+def _split_on_re(src, src_key, regexp, dst, dst_key1, dst_key2):
+    if src_key not in src:
+        return
+
+    source = src[src_key]
+    if isinstance(source, basestring):
+        source = [ source ]
+
+    partition1 = []
+    partition2 = []
+    for v in source:
+        if re.match(regexp, v):
+            partition1.append(v)
+        else:
+            partition2.append(v)
+
+    if len(partition1) > 0:
+        dst[dst_key1] = partition1
+    if len(partition2) > 0:
+        dst[dst_key2] = partition2
+
+def run_instance(config):
+    ec2 = boto.ec2.connect_to_region(config.region,
+            aws_access_key_id=config.aws_access_key,
+            aws_secret_access_key=config.aws_secret_key)
+
+    instance = _load_definition(config.definition)
+
+    # Command-line overrides
+    _map_attribute_to_key(config, 'instance_count', instance, 'max-count')
+    _map_attribute_to_key(config, 'availability_zone', instance, 'availability-zone')
+    _map_attribute_to_key(config, 'subnet', instance, 'subnet')
+    _map_attribute_to_key(config, 'client_token', instance, 'client-token')
+
+    params = {}
+
+    # Map namespaces
+    _remap_key(instance, 'instance-type', params, 'instance_type')
+    _remap_key(instance, 'min-count', params, 'min_count')
+    _remap_key(instance, 'max-count', params, 'max_count')
+
+    _remap_key(instance, 'availability-zone', params, 'placement')
+
+    _remap_key(instance, 'image', params, 'image_id')
+    _remap_key(instance, 'kernel', params, 'kernel_id')
+    _remap_key(instance, 'ramdisk', params, 'ramdisk_id')
+
+    _remap_key(instance, 'key', params, 'key_name')
+    _remap_key(instance, 'subnet', params, 'subnet_id')
+    _remap_key(instance, 'ip_address', params, 'private_ip_address')
+
+    _remap_key(instance, 'ebs-optimized', params, 'ebs_optimized')
+    _remap_key(instance, 'shutdown-behavior', params, 'instance_initiated_shutdown_behavior')
+    _remap_key(instance, 'monitoring', params, 'monitoring_enabled')
+
+    _remap_key(instance, 'data', params, 'user_data')
+    _remap_key(instance, 'client-token', params, 'client_token')
+
+    _split_on_re(instance, 'security-groups', 'sg-[0-9A-Fa-f]+$', params, 'security_group_ids', 'security_groups')
+
+    if 'api-termination' in instance:
+        params['disable_api_termination'] = not instance['api-termination']
+
+    if 'role' in instance:
+        if re.match('arn:aws:iam::'):
+            params['instance_profile_arn'] = instance['role']
+        else:
+            params['instance_profile_name'] = instance['role']
+
+    # TODO: BlockDeviceMapping
+    # TODO: NetworkInterface
+
+    # Do it!
+    print "About to start instance with configuration:", params
+    print ec2.run_instances(**params)
+
+def load_config():
+    args = argparse.ArgumentParser()
+
+    args.add_argument('-O', '--aws-access-key', default=os.environ.get('AWS_ACCESS_KEY'))
+    args.add_argument('-W', '--aws-secret-key', default=os.environ.get('AWS_SECRET_KEY'))
+    args.add_argument('--region', default=os.environ.get('EC2_REGION'),
+            required=(os.environ.get('EC2_REGION') is None))
+
+    actions = args.add_subparsers(title='actions')
+
+    run = actions.add_parser('run-instance', argument_default=argparse.SUPPRESS)
+    run.add_argument('--client-token')
+    run.add_argument('-n', '--instance-count')
+    run.add_argument('-z', '--availability-zone')
+    run.add_argument('-s', '--subnet')
+    run.add_argument('definition')
+    run.set_defaults(actor=run_instance)
+
+    return  args.parse_args()
+
+if __name__ == '__main__':
+    config = load_config()
+    config.actor(config)
