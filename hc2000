@@ -49,17 +49,25 @@ def run_instance(config):
     instance = _load_definition(config.definition)
 
     # Command-line overrides
-    _map_attribute_to_key(config, 'instance_count', instance, 'max-count')
+    _map_attribute_to_key(config, 'instance_count', instance, 'count')
     _map_attribute_to_key(config, 'availability_zone', instance, 'availability-zone')
     _map_attribute_to_key(config, 'subnet', instance, 'subnet')
     _map_attribute_to_key(config, 'client_token', instance, 'client-token')
+
+    spot_request = 'spot-price' in instance
+    if not spot_request \
+            and 'count' in instance:
+        instance['max-count'] = instance['count']
 
     params = {}
 
     # Map namespaces
     _remap_key(instance, 'instance-type', params, 'instance_type')
-    _remap_key(instance, 'min-count', params, 'min_count')
-    _remap_key(instance, 'max-count', params, 'max_count')
+    if spot_request:
+        _remap_key(instance, 'count', params, 'count')
+    else:
+        _remap_key(instance, 'min-count', params, 'min_count')
+        _remap_key(instance, 'max-count', params, 'max_count')
 
     _remap_key(instance, 'availability-zone', params, 'placement')
 
@@ -69,19 +77,31 @@ def run_instance(config):
 
     _remap_key(instance, 'key', params, 'key_name')
     _remap_key(instance, 'subnet', params, 'subnet_id')
-    _remap_key(instance, 'ip_address', params, 'private_ip_address')
+    if not spot_request:
+        _remap_key(instance, 'ip_address', params, 'private_ip_address')
 
     _remap_key(instance, 'ebs-optimized', params, 'ebs_optimized')
-    _remap_key(instance, 'shutdown-behavior', params, 'instance_initiated_shutdown_behavior')
+    if not spot_request:
+        _remap_key(instance, 'shutdown-behavior', params, 'instance_initiated_shutdown_behavior')
     _remap_key(instance, 'monitoring', params, 'monitoring_enabled')
 
     _remap_key(instance, 'data', params, 'user_data')
-    _remap_key(instance, 'client-token', params, 'client_token')
+    if not spot_request:
+        _remap_key(instance, 'client-token', params, 'client_token')
+
+    if spot_request:
+        _remap_key(instance, 'spot-price', params, 'price')
+        _remap_key(instance, 'spot-request-type', params, 'type')
+        _remap_key(instance, 'valid-from', params, 'valid_from')
+        _remap_key(instance, 'valid-until', params, 'valid_until')
+        _remap_key(instance, 'launch-group', params, 'launch_group')
+        _remap_key(instance, 'availability-zone-group', params, 'availability_zone_group')
 
     _split_on_re(instance, 'security-groups', 'sg-[0-9A-Fa-f]+$', params, 'security_group_ids', 'security_groups')
 
-    if 'api-termination' in instance:
-        params['disable_api_termination'] = not instance['api-termination']
+    if not spot_request:
+        if 'api-termination' in instance:
+            params['disable_api_termination'] = not instance['api-termination']
 
     if 'role' in instance:
         if re.match('arn:aws:iam::'):
@@ -94,7 +114,11 @@ def run_instance(config):
 
     # Do it!
     print "About to start instance with configuration:", params
-    print ec2.run_instances(**params)
+
+    if spot_request:
+        print ec2.request_spot_instances(**params)
+    else:
+        print ec2.run_instances(**params)
 
 def load_config():
     args = argparse.ArgumentParser()
