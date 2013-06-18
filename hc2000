@@ -2,6 +2,7 @@
 
 import argparse
 import boto.ec2
+import boto.ec2.autoscale
 import re
 import os
 import yaml
@@ -10,9 +11,11 @@ def _load_definition(filename):
     with open(filename) as f:
         return yaml.safe_load(f)
 
-def _remap_key(src, src_key, dst, dst_key):
+def _remap_key(src, src_key, dst, dst_key, default=None):
     if src_key in src:
         dst[dst_key] = src[src_key]
+    elif default is not None:
+        dst[dst_key] = default
 
 def _map_attribute_to_key(obj, attr, dst, dst_key):
     try:
@@ -41,6 +44,46 @@ def _split_on_re(src, src_key, regexp, dst, dst_key1, dst_key2):
     if len(partition2) > 0:
         dst[dst_key2] = partition2
 
+def _run_in_auto_scaling_group(config, params, ec2):
+    autoscale = boto.ec2.autoscale.connect_to_region(config.region,
+            aws_access_key_id=config.aws_access_key,
+            aws_secret_access_key=config.aws_secret_key)
+
+    launch_config = autoscale.get_all_launch_configurations(names=[ params['launch-configuration'] ])
+    if len(launch_config) == 0:
+        lc_params = {}
+        _remap_key(params, 'image_id', lc_params, 'image_id')
+        _remap_key(params, 'key_name', lc_params, 'key_name')
+        _remap_key(params, 'security_groups', lc_params, 'security_groups')
+        _remap_key(params, 'user_data', lc_params, 'user_data')
+        _remap_key(params, 'instance_type', lc_params, 'instance_type')
+        _remap_key(params, 'kern_id', lc_params, 'kern_id')
+        _remap_key(params, 'ramdisk_id', lc_params, 'ramdisk_id')
+        _remap_key(params, 'instance_monitoring', lc_params, 'instance_monitoring')
+        _remap_key(params, 'spot_price', lc_params, 'spot_price')
+        _remap_key(params, 'instance_profile_name', lc_params, 'instance_profile_name')
+        _remap_key(params, 'ebs_optimized', lc_params, 'ebs_optimized')
+
+        launch_config = boto.ec2.autoscale.launchconfig.LaunchConfiguration(autoscale, params['launch-configuration'], **lc_params)
+        print autoscale.create_launch_configuration(launch_config)
+
+    auto_scaling_group = autoscale.get_all_groups(names=[ params['auto-scaling-group'] ])
+    if len(auto_scaling_group) == 0:
+        asg_params = {}
+        _remap_key(params, 'availability_zones', asg_params, 'availability_zones')
+        _remap_key(params, 'default_cooldown', asg_params, 'default_cooldown')
+        _remap_key(params, 'desired_capacity', asg_params, 'desired_capacity')
+        _remap_key(params, 'health_check_period', asg_params, 'health_check_period')
+        _remap_key(params, 'health_check_type', asg_params, 'health_check_type')
+        _remap_key(params, 'load_balancers', asg_params, 'load_balancers')
+        _remap_key(params, 'min_size', asg_params, 'min_size', 0)
+        _remap_key(params, 'max_size', asg_params, 'max_size', 1)
+        _remap_key(params, 'vpc_zone_identifier', asg_params, 'vpc_zone_identifier')
+        _remap_key(params, 'termination_policies', asg_params, 'termination_policies')
+
+        auto_scaling_group = boto.ec2.autoscale.group.AutoScalingGroup(autoscale, params['auto-scaling-group'], params['launch-configuration'], **asg_params)
+        print autoscale.create_auto_scaling_group(auto_scaling_group)
+
 def run_instance(config):
     ec2 = boto.ec2.connect_to_region(config.region,
             aws_access_key_id=config.aws_access_key,
@@ -54,7 +97,8 @@ def run_instance(config):
     _map_attribute_to_key(config, 'subnet', instance, 'subnet')
     _map_attribute_to_key(config, 'client_token', instance, 'client-token')
 
-    spot_request = 'spot-price' in instance
+    auto_scaling_group = 'auto-scaling-group' in instance
+    spot_request = not auto_scaling_group and 'spot-price' in instance
     if not spot_request \
             and 'count' in instance:
         instance['max-count'] = instance['count']
@@ -62,49 +106,84 @@ def run_instance(config):
     params = {}
 
     # Map namespaces
+    _remap_key(instance, 'auto-scaling-group', params, 'auto-scaling-group')
+    _remap_key(instance, 'launch-configuration', params, 'launch-configuration')
+
     _remap_key(instance, 'instance-type', params, 'instance_type')
-    if spot_request:
+    if auto_scaling_group:
+        _remap_key(instance, 'min-count', params, 'min_size')
+        _remap_key(instance, 'max-count', params, 'max_size')
+        _remap_key(instance, 'count', params, 'desired_capacity')
+    elif spot_request:
         _remap_key(instance, 'count', params, 'count')
     else:
         _remap_key(instance, 'min-count', params, 'min_count')
         _remap_key(instance, 'max-count', params, 'max_count')
 
-    _remap_key(instance, 'availability-zone', params, 'placement')
+    if auto_scaling_group:
+        _remap_key(instance, 'availability-zone', params, 'availability_zones')
+    else:
+        _remap_key(instance, 'availability-zone', params, 'placement')
 
     _remap_key(instance, 'image', params, 'image_id')
-    _remap_key(instance, 'kernel', params, 'kernel_id')
+    if auto_scaling_group:
+        _remap_key(instance, 'kernel', params, 'kern_id')
+    else:
+        _remap_key(instance, 'kernel', params, 'kernel_id')
     _remap_key(instance, 'ramdisk', params, 'ramdisk_id')
 
     _remap_key(instance, 'key', params, 'key_name')
-    _remap_key(instance, 'subnet', params, 'subnet_id')
-    if not spot_request:
+    if auto_scaling_group:
+        _remap_key(instance, 'subnet', params, 'vpc_zone_identifier')
+    else:
+        _remap_key(instance, 'subnet', params, 'subnet_id')
+    if not auto_scaling_group and not spot_request:
         _remap_key(instance, 'ip_address', params, 'private_ip_address')
 
     _remap_key(instance, 'ebs-optimized', params, 'ebs_optimized')
-    if not spot_request:
+    if not auto_scaling_group and not spot_request:
         _remap_key(instance, 'shutdown-behavior', params, 'instance_initiated_shutdown_behavior')
-    _remap_key(instance, 'monitoring', params, 'monitoring_enabled')
+
+    if auto_scaling_group:
+        _remap_key(instance, 'monitoring', params, 'instance_monitoring')
+    else:
+        _remap_key(instance, 'monitoring', params, 'monitoring_enabled')
 
     _remap_key(instance, 'data', params, 'user_data')
-    if not spot_request:
+    if not auto_scaling_group and not spot_request:
         _remap_key(instance, 'client-token', params, 'client_token')
 
-    if spot_request:
+    if auto_scaling_group:
+        _remap_key(instance, 'spot-price', params, 'spot_price')
+    else:
         _remap_key(instance, 'spot-price', params, 'price')
+
+    if spot_request:
         _remap_key(instance, 'spot-request-type', params, 'type')
         _remap_key(instance, 'valid-from', params, 'valid_from')
         _remap_key(instance, 'valid-until', params, 'valid_until')
         _remap_key(instance, 'launch-group', params, 'launch_group')
         _remap_key(instance, 'availability-zone-group', params, 'availability_zone_group')
 
+    if auto_scaling_group:
+        _remap_key(instance, 'launch-configuration', params, 'launch_config_name')
+        _remap_key(instance, 'auto-scaling-cooldown', params, 'default_cooldown')
+        _remap_key(instance, 'auto-scaling-grace-period', params, 'health_check_period')
+        _remap_key(instance, 'auto-scaling-health-check', params, 'health_check_type')
+        _remap_key(instance, 'load-balancers', params, 'load_balancers')
+        _remap_key(instance, 'tags', params, 'tags')
+        _remap_key(instance, 'termination-policies', params, 'termination-policies')
+
     _split_on_re(instance, 'security-groups', 'sg-[0-9A-Fa-f]+$', params, 'security_group_ids', 'security_groups')
 
-    if not spot_request:
+    if not auto_scaling_group and not spot_request:
         if 'api-termination' in instance:
             params['disable_api_termination'] = not instance['api-termination']
 
     if 'role' in instance:
-        if re.match('arn:aws:iam::'):
+        if auto_scaling_group:
+            params['instance_profile_name'] = instance['role']
+        elif re.match('arn:aws:iam::'):
             params['instance_profile_arn'] = instance['role']
         else:
             params['instance_profile_name'] = instance['role']
@@ -115,7 +194,9 @@ def run_instance(config):
     # Do it!
     print "About to start instance with configuration:", params
 
-    if spot_request:
+    if auto_scaling_group:
+        _run_in_auto_scaling_group(config, params, ec2)
+    elif spot_request:
         print ec2.request_spot_instances(**params)
     else:
         print ec2.run_instances(**params)
