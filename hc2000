@@ -183,7 +183,7 @@ def run_instance(config):
     if 'role' in instance:
         if auto_scaling_group:
             params['instance_profile_name'] = instance['role']
-        elif re.match('arn:aws:iam::'):
+        elif re.match('arn:aws:iam::', instance['role']):
             params['instance_profile_arn'] = instance['role']
         else:
             params['instance_profile_name'] = instance['role']
