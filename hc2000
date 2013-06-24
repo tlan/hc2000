@@ -227,8 +227,8 @@ def load_config():
     run = actions.add_parser('run', argument_default=argparse.SUPPRESS)
     run.add_argument('--client-token')
     run.add_argument('-n', '--instance-count')
-    run.add_argument('-z', '--availability-zone')
     run.add_argument('-s', '--subnet')
+    run.add_argument('-z', '--availability-zone')
     run.add_argument('definition')
     run.set_defaults(actor=run_action)
 
