@@ -6,5 +6,7 @@ file { '/etc/future.txt':
     It is the distant future,
     The year 2000
 
+        - in The Humans are Dead,
+          by Flight of the Conchords
 ',
 }
