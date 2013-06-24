@@ -165,7 +165,7 @@ for key in launch_configuration_keys:
     # TODO: NetworkInterface
 
 def run_action(config):
-    instance = _load_definition(config.definition)
+    instance = _load_definition(config.instance)
 
     def command_line_override(option, key):
         if hasattr(config, option):
@@ -223,19 +223,27 @@ def _do_auto_scaling(config, definition):
 def parse_args(args=None):
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('-O', '--aws-access-key', default=os.environ.get('AWS_ACCESS_KEY'))
-    parser.add_argument('-W', '--aws-secret-key', default=os.environ.get('AWS_SECRET_KEY'))
+    parser.add_argument('-O', '--aws-access-key', default=os.environ.get('AWS_ACCESS_KEY'),
+            help='AWS Access Key ID. Defaults to AWS_ACCESS_KEY environment variable, if set.')
+    parser.add_argument('-W', '--aws-secret-key', default=os.environ.get('AWS_SECRET_KEY'),
+            help='AWS Secret Access Key. Defaults to AWS_SECRET_KEY environment variable, if set.')
     parser.add_argument('--region', default=os.environ.get('EC2_REGION'),
-            required=(os.environ.get('EC2_REGION') is None))
+            required=(os.environ.get('EC2_REGION') is None),
+            help='AWS EC2 Region. Defaults to EC2_REGION environment variable, if set.')
 
     actions = parser.add_subparsers(title='actions')
 
     run = actions.add_parser('run', argument_default=argparse.SUPPRESS)
-    run.add_argument('--client-token')
-    run.add_argument('-n', '--instance-count')
-    run.add_argument('-s', '--subnet')
-    run.add_argument('-z', '--availability-zone')
-    run.add_argument('definition')
+    run.add_argument('--client-token',
+            help='User-defined token identifying the request. Use to ensure idempotent requests.')
+    run.add_argument('-n', '--instance-count',
+            help='Number of instances to run. Overrides \'count\' attribute in instance definition.')
+    run.add_argument('-s', '--subnet',
+            help='Subnet identifier for started instances. Overrides \'subnet\' attribute in instance definition.')
+    run.add_argument('-z', '--availability-zone',
+            help='Availability zone for started instances. Overrides \'availability-zone\' attribute in instance definition.')
+    run.add_argument('instance',
+            help='Path to instance definition file.')
     run.set_defaults(actor=run_action)
 
     return  parser.parse_args(args)
