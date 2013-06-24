@@ -171,9 +171,10 @@ def run_action(config):
         if hasattr(config, option):
             instance[key] = getattr(config, option)
 
-    command_line_override('instance-count', 'count')
+    command_line_override('client_token', 'client-token')
+    command_line_override('instance_count', 'count')
     command_line_override('subnet', 'subnet')
-    command_line_override('availability-zone', 'availability-zone')
+    command_line_override('availability_zone', 'availability-zone')
 
     if 'auto-scaling-group' in instance:
         _do_auto_scaling(config, instance)
