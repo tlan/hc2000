@@ -176,13 +176,13 @@ def run_action(config):
     command_line_override('availability-zone', 'availability-zone')
 
     if 'auto-scaling-group' in instance:
-        do_auto_scaling(config, instance)
+        _do_auto_scaling(config, instance)
     elif 'spot-price' in instance:
-        do_spot_request(config, instance)
+        _do_spot_request(config, instance)
     else:
-        do_run_instance(config, instance)
+        _do_run_instance(config, instance)
 
-def do_run_instance(config, definition):
+def _do_run_instance(config, definition):
     ec2 = boto.ec2.connect_to_region(config.region,
             aws_access_key_id=config.aws_access_key,
             aws_secret_access_key=config.aws_secret_key)
@@ -190,7 +190,7 @@ def do_run_instance(config, definition):
     params = _translate(run_instances_mapping, definition)
     print ec2.run_instances(**params)
 
-def do_spot_request(config, definition):
+def _do_spot_request(config, definition):
     ec2 = boto.ec2.connect_to_region(config.region,
             aws_access_key_id=config.aws_access_key,
             aws_secret_access_key=config.aws_secret_key)
@@ -198,7 +198,7 @@ def do_spot_request(config, definition):
     params = _translate(spot_request_mapping, definition)
     print ec2.request_spot_instances(**params)
 
-def do_auto_scaling(config, definition):
+def _do_auto_scaling(config, definition):
     autoscale = boto.ec2.autoscale.connect_to_region(config.region,
             aws_access_key_id=config.aws_access_key,
             aws_secret_access_key=config.aws_secret_key)
@@ -220,15 +220,15 @@ def do_auto_scaling(config, definition):
     # TODO: Handle load balancers
     # TODO: Handle updates to both launch configuration and group
 
-def load_config():
-    args = argparse.ArgumentParser()
+def parse_args(args=None):
+    parser = argparse.ArgumentParser()
 
-    args.add_argument('-O', '--aws-access-key', default=os.environ.get('AWS_ACCESS_KEY'))
-    args.add_argument('-W', '--aws-secret-key', default=os.environ.get('AWS_SECRET_KEY'))
-    args.add_argument('--region', default=os.environ.get('EC2_REGION'),
+    parser.add_argument('-O', '--aws-access-key', default=os.environ.get('AWS_ACCESS_KEY'))
+    parser.add_argument('-W', '--aws-secret-key', default=os.environ.get('AWS_SECRET_KEY'))
+    parser.add_argument('--region', default=os.environ.get('EC2_REGION'),
             required=(os.environ.get('EC2_REGION') is None))
 
-    actions = args.add_subparsers(title='actions')
+    actions = parser.add_subparsers(title='actions')
 
     run = actions.add_parser('run', argument_default=argparse.SUPPRESS)
     run.add_argument('--client-token')
@@ -238,8 +238,8 @@ def load_config():
     run.add_argument('definition')
     run.set_defaults(actor=run_action)
 
-    return  args.parse_args()
+    return  parser.parse_args(args)
 
 if __name__ == '__main__':
-    config = load_config()
+    config = parse_args()
     config.actor(config)
