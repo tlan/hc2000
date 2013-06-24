@@ -1,0 +1,24 @@
+# Launches a single instance with initial setup performed through CloudInit
+
+instance-type: t1.micro
+image: ami-c7c0d6b3 # Amazon Linux 64-bit, EBS-backed [ EU-West-1 ]
+
+# key and security-group must refer to an existing Key Pair and Security
+# Group(s) in AWS. They can be created through AWS management console.
+# For the Security Group, ensure port 22 is open for incoming traffic so you
+# can ssh into the machine.
+key: hc2000
+security-groups: quick-start-1
+
+user-data: |
+    #cloud-config
+    repo_additions:
+        - source: 10gen
+          filename: 10gen.repo
+          baseurl: http://downloads-distro.mongodb.org/repo/redhat/os/x86_64
+          enabled: 1
+          gpgcheck: 0
+
+    packages:
+      - mongo-10gen-server
+      - sysstat

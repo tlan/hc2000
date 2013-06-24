@@ -1,0 +1,58 @@
+# Create a one-time spot request for a single instance with initial setup
+# performed by puppet (itself bootstrapped through CloudInit)
+
+instance-type: t1.micro
+spot-price: 0.02
+image: ami-c7c0d6b3 # Amazon Linux 64-bit, EBS-backed [ EU-West-1 ]
+key: hc2000
+security-groups: quick-start-1
+
+user-data: |
+    Content-Type: multipart/mixed; boundary="===============0115289681370888163=="
+    MIME-Version: 1.0
+
+    --===============0115289681370888163==
+    Content-Type: text/part-handler; charset="us-ascii"
+    MIME-Version: 1.0
+    Content-Transfer-Encoding: 7bit
+    Content-Disposition: attachment; filename="hc2000-bootstrap.py"
+
+    #part-handler
+
+    def list_types():
+        return [ 'text/puppet' ]
+
+    def handle_mime_begin(data, filename, payload):
+        data.part_handlers['text/cloud-config'](data, 'text/cloud-config', 'hc2000-puppet-install',
+                '\n'.join([ '#cloud-config', 'packages: [ puppet ]', '' ]))
+
+    def handle_mime_puppet(data, filename, payload):
+        data.part_handlers['text/x-shellscript'](data, 'text/x-shellscript', filename, '#!/usr/bin/puppet apply\n' + payload)
+
+    _handlers = {
+        '__begin__': handle_mime_begin,
+        'text/puppet': handle_mime_puppet,
+    }
+
+    def handle_part(data, ctype, filename, payload):
+        if ctype in _handlers:
+            _handlers[ctype](data, filename, payload)
+
+    --===============0115289681370888163==
+    Content-Type: text/puppet; charset="us-ascii"
+    MIME-Version: 1.0
+    Content-Transfer-Encoding: 7bit
+    Content-Disposition: attachment; filename="future.pp"
+
+    file { '/etc/future.txt':
+        ensure  => file,
+        content => '
+        It is the future,
+        The distant future
+        It is the distant future,
+        The year 2000
+
+    ',
+    }
+
+    --===============0115289681370888163==--
