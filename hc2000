@@ -5,11 +5,17 @@ import boto.ec2
 import boto.ec2.autoscale
 import re
 import os
+import sys
 import yaml
 
 def _load_definition(filename):
     with open(filename) as f:
-        return yaml.safe_load(f)
+        sys.stdout.write('Loading %s...' % filename)
+        sys.stdout.flush()
+
+        definition = yaml.safe_load(f)
+        sys.stdout.write(' [ OK ]\n')
+    return definition
 
 # xl for translate, xf for transform.
 def _xl_if(condition, xl_if_true, xl_if_false):
