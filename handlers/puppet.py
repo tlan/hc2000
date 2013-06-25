@@ -3,16 +3,16 @@
 def list_types():
     return [ 'text/puppet' ]
 
-def handle_mime_begin(data, filename, payload):
+def _handle_mime_begin(data, filename, payload):
     data.part_handlers['text/cloud-config'](data, 'text/cloud-config', 'hc2000-puppet-install',
             '\n'.join([ '#cloud-config', 'packages: [ puppet ]', '' ]))
 
-def handle_mime_puppet(data, filename, payload):
+def _handle_mime_puppet(data, filename, payload):
     data.part_handlers['text/x-shellscript'](data, 'text/x-shellscript', filename, '#!/usr/bin/puppet apply\n' + payload)
 
 _handlers = {
-    '__begin__': handle_mime_begin,
-    'text/puppet': handle_mime_puppet,
+    '__begin__': _handle_mime_begin,
+    'text/puppet': _handle_mime_puppet,
 }
 
 def handle_part(data, ctype, filename, payload):
