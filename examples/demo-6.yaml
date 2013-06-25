@@ -1,0 +1,25 @@
+# Create a one-time spot request for a single instance with custom block device
+# mappings: an instance store volume and a custom EBS-backed volume with
+# provisioned IOPS
+
+instance-type:      m1.large
+spot-price:         0.26
+
+image:              ami-c7c0d6b3 # Amazon Linux 64-bit, EBS-backed [ EU-West-1 ]
+
+# key and security-group must refer to an existing Key Pair and Security
+# Group(s) in AWS. They can be created through AWS management console.
+# For the Security Group, ensure port 22 is open for incoming traffic so you
+# can ssh into the machine.
+key:                hc2000
+security-groups:    quick-start-1
+
+ebs-optimized:      true
+
+block-devices:
+    /dev/sdb:
+        source:     ephemeral0
+
+    /dev/sdc:
+        size:       25
+        iops:       250
