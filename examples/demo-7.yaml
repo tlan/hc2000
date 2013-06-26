@@ -1,0 +1,21 @@
+auto-scaling-group: demo-7-group
+launch-configuration: demo-7-config
+
+min-count: 0
+max-count: 1
+availability-zone: [ eu-west-1a, eu-west-1b, eu-west-1c ]
+
+instance-type:      m1.small
+spot-price:         0.065
+
+image:              ami-c7c0d6b3 # Amazon Linux 64-bit, EBS-backed [ EU-West-1 ]
+
+key:                hc2000
+security-groups:    quick-start-1
+
+block-devices:
+    /dev/sdb:
+        source:     ephemeral0
+
+    /dev/sdc:
+        size:       200

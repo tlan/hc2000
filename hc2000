@@ -120,6 +120,16 @@ ec2_block_device_mapping = {
     'disposable':   _xl_set_key('delete_on_termination'),
 }
 
+# For BlockDeviceMappings in LaunchConfigurations, use AWS parameter names
+# directly to work around boto bug
+as_block_device_mapping = {
+    'source':       _xl_switch({
+                        'ephemeral[0-9]':       _xl_set_key('VirtualName'),
+                        'snap-[a-fA-F0-9]*':    _xl_set_key('Ebs.SnapshotId'),
+                    }),
+    'size':         _xl_set_key('Ebs.VolumeSize'),
+}
+
 def _xl_ec2_block_devices(key):
     def _block_devices(destination, value):
         bdm = boto.ec2.blockdevicemapping.BlockDeviceMapping()
@@ -127,6 +137,19 @@ def _xl_ec2_block_devices(key):
             params = _translate(ec2_block_device_mapping, v)
             bdm[k] = boto.ec2.blockdevicemapping.BlockDeviceType(**params)
         destination[key] = bdm
+
+    return _block_devices
+
+def _xl_as_block_devices(key):
+    def _block_devices(destination, value):
+        mappings = []
+        for k, v in value.iteritems():
+            # boto.ec2.autoscale.launchconfig.BlockDeviceMapping does not get
+            # properly propagated to API call
+            bdm = _translate(as_block_device_mapping, v)
+            bdm['DeviceName'] = k
+            mappings.append(bdm)
+        destination[key] = mappings
 
     return _block_devices
 
@@ -188,6 +211,7 @@ launch_configuration_mapping = {
     'user-data':                _xl_set_key('user_data'),
     'monitoring':               _xl_set_key('instance_monitoring'),
     'ebs-optimized':            _xl_set_key('ebs_optimized'),
+    'block-devices':            _xl_as_block_devices('block_device_mappings'),
 }
 
 auto_scaling_group_mapping = {
@@ -218,7 +242,6 @@ for key in launch_configuration_keys:
     if key not in auto_scaling_group_mapping:
         auto_scaling_group_mapping[key] = lambda x, y: None
 
-    # TODO: BlockDeviceMapping (auto-scaling)
     # TODO: NetworkInterface
 
 def run_action(config):
