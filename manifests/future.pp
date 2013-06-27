@@ -1,3 +1,5 @@
+#puppet
+
 file { '/etc/future.txt':
     ensure  => file,
     content => '
