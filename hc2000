@@ -261,11 +261,12 @@ def _resolve_symbolic_values(definition):
     def _resolve_symbol(value):
         visited = set()
         while isinstance(value, basestring) \
-                and value.startswith(prefix) \
-                and value in definition \
-                and value not in visited:
-            visited.add(value)
-            value = definition[value]
+                and value.startswith(prefix):
+            value = value.format(**definition)
+            if value in definition \
+                    and value not in visited:
+                visited.add(value)
+                value = definition[value]
         return value
 
     for prefix in _resolvable_prefixes:
@@ -281,7 +282,7 @@ def _resolve_symbolic_values(definition):
 def load_instance_definition(config):
     instance = {}
     for path in config.instance_path:
-        path = path % { 'region': config.region }
+        path = path.format(region=config.region)
         _merge_definition(instance,
                 _load_definition(os.path.join(path, '~default~')))
         _merge_definition(instance,
