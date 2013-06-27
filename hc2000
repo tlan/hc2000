@@ -103,6 +103,9 @@ def _apply_defaults(defaults, source):
             if k not in source:
                 source[k] = v
 
+_resolvable_prefixes = ('image:', 'kernel:', 'key:', 'load-balancers:',
+    'ramdisk:', 'security-groups:', 'spot-price:', 'subnet:')
+
 def _translate(mappings, source):
     result = {}
     if '~defaults~' in mappings:
@@ -110,7 +113,7 @@ def _translate(mappings, source):
     for key, value in source.iteritems():
         if key in mappings:
             _apply_mapping(mappings[key], result, value)
-        else:
+        elif not key.startswith(_resolvable_prefixes):
             print "Unknown or unsupported option in source: %s (%s)" \
                     % (key, value)
     return result
@@ -254,6 +257,24 @@ for key in launch_configuration_keys:
 
     # TODO: NetworkInterface
 
+def _resolve_symbolic_values(definition):
+    def _resolve_symbol(value):
+        if isinstance(value, basestring) \
+                and value.startswith(prefix) \
+                and value in definition:
+            return _resolve_symbol(definition[value])
+        return value
+
+    for prefix in _resolvable_prefixes:
+        key = prefix[:-1]
+        if key not in definition:
+            continue
+
+        if isinstance(definition[key], basestring):
+            definition[key] = _resolve_symbol(definition[key])
+        elif isinstance(definition[key], list):
+            definition[key] = [ _resolve_symbol(v) for v in definition[key] ]
+
 def load_instance_definition(config):
     instance = {}
     for path in config.instance_path:
@@ -262,6 +283,7 @@ def load_instance_definition(config):
                 _load_definition(os.path.join(path, '~default~')))
         _merge_definition(instance,
                 _load_definition(os.path.join(path, config.instance)))
+    _resolve_symbolic_values(instance)
     return instance
 
 def run_action(config):

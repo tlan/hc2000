@@ -1,0 +1,12 @@
+# Instance
+instance-type:      t1.micro
+spot-price:         spot-price:t1.micro
+image:              image:amazon-linux:64-bit:ebs-backed
+
+key:                hc2000
+security-groups:    quick-start-1
+
+# Definitions
+image:amazon-linux:64-bit:ebs-backed:   ami-c7c0d6b3
+spot-price:t1.micro:                    0.020
+
