@@ -6,17 +6,27 @@ import boto.ec2.autoscale
 import boto.ec2.blockdevicemapping
 import re
 import os
+import os.path
 import sys
 import yaml
 
 def _load_definition(filename):
-    with open(filename) as f:
-        sys.stdout.write('Loading %s...' % filename)
-        sys.stdout.flush()
+    try:
+        with open(filename) as f:
+            sys.stdout.write('Loading %s...' % filename)
+            sys.stdout.flush()
 
-        definition = yaml.safe_load(f)
+            definition = yaml.safe_load(f)
+
         sys.stdout.write(' [ OK ]\n')
-    return definition
+        return definition
+
+    except IOError as err:
+        pass
+
+def _merge_definition(definition, new):
+    if new is not None:
+        definition.update(new)
 
 # xl for translate, xf for transform.
 def _xl_if(condition, xl_if_true, xl_if_false):
@@ -244,8 +254,18 @@ for key in launch_configuration_keys:
 
     # TODO: NetworkInterface
 
+def load_instance_definition(config):
+    instance = {}
+    for path in config.instance_path:
+        path = path % { 'region': config.region }
+        _merge_definition(instance,
+                _load_definition(os.path.join(path, '~default~')))
+        _merge_definition(instance,
+                _load_definition(os.path.join(path, config.instance)))
+    return instance
+
 def run_action(config):
-    instance = _load_definition(config.instance)
+    instance = load_instance_definition(config)
 
     def command_line_override(option, key):
         if hasattr(config, option):
@@ -302,7 +322,7 @@ def _do_auto_scaling(config, definition):
     # TODO: Handle updates to both launch configuration and group
 
 def parse_args(args=None):
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
 
     parser.add_argument('-O', '--aws-access-key', default=os.environ.get('AWS_ACCESS_KEY'),
             help='AWS Access Key ID. Defaults to AWS_ACCESS_KEY environment variable, if set.')
@@ -311,6 +331,9 @@ def parse_args(args=None):
     parser.add_argument('--region', default=os.environ.get('EC2_REGION'),
             required=(os.environ.get('EC2_REGION') is None),
             help='AWS EC2 Region. Defaults to EC2_REGION environment variable, if set.')
+
+    parser.add_argument('--instance-path', action='append',
+            help='Append path to list of instance definition search paths. If no path is specified definitions are loaded from the current directory.')
 
     actions = parser.add_subparsers(title='actions')
 
@@ -327,8 +350,13 @@ def parse_args(args=None):
             help='Path to instance definition file.')
     run.set_defaults(actor=run_action)
 
-    return  parser.parse_args(args)
+    return parser.parse_args(args)
+
+def set_default_config(config):
+    if config.instance_path is None:
+        config.instance_path = [ '.' ]
 
 if __name__ == '__main__':
     config = parse_args()
+    set_default_config(config)
     config.actor(config)
