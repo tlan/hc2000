@@ -348,6 +348,31 @@ def run_action(config):
     command_line_override('subnet', 'subnet')
     command_line_override('availability_zone', 'availability-zone')
 
+    # FIXME: This should live as some sort of external plugin.
+    if 'puppet' in instance:
+        if 'user-data' not in instance:
+            instance['user-data'] = []
+        elif isinstance(instance['user-data'], basestring):
+            instance['user-data'] = [ instance['user-data'] ]
+
+        def _include_puppet(destination, value):
+            orig_value = value
+            if not value.endswith('.pp'):
+                value = value + '.pp'
+            found = False
+            for path in config.puppet_path:
+                path = os.path.join(path, value)
+                if os.path.exists(path):
+                    destination['user-data'].append('file:' + path)
+                    found = True
+            if not found:
+                print 'Couldn\'t find manifest for \'%s\'' % orig_value
+
+        instance['user-data'].append('file:handlers/puppet.py')
+        _xl_for_each(_include_puppet)(instance, instance['puppet'])
+
+        del instance['puppet']
+
     if 'auto-scaling-group' in instance:
         _do_auto_scaling(config, instance)
     elif 'spot-price' in instance:
@@ -411,6 +436,10 @@ def parse_args(args=None):
             help='Append path to list of instance definition search paths. If '
             'no path is specified on the command line definitions are loaded '
             'from the current directory.')
+    parser.add_argument('--puppet-path', metavar='<path>', action='append',
+            help='Append path to list of puppet manifest search paths. If no '
+            'path is specified on the command line puppet manifests are '
+            'loaded from the current directory.')
 
     actions = parser.add_subparsers(title='actions')
 
@@ -436,6 +465,8 @@ def parse_args(args=None):
 def set_default_config(config):
     if config.instance_path is None:
         config.instance_path = [ '.' ]
+    if config.puppet_path is None:
+        config.puppet_path = [ '.' ]
 
 if __name__ == '__main__':
     config = parse_args()
