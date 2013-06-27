@@ -259,10 +259,13 @@ for key in launch_configuration_keys:
 
 def _resolve_symbolic_values(definition):
     def _resolve_symbol(value):
-        if isinstance(value, basestring) \
+        visited = set()
+        while isinstance(value, basestring) \
                 and value.startswith(prefix) \
-                and value in definition:
-            return _resolve_symbol(definition[value])
+                and value in definition \
+                and value not in visited:
+            visited.add(value)
+            value = definition[value]
         return value
 
     for prefix in _resolvable_prefixes:
