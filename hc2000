@@ -179,7 +179,14 @@ _magic_to_mime = {
 }
 
 def _xl_user_data(key):
+    def _user_data_file(filename):
+        with open(filename, 'rb') as f:
+            return _user_data_entry(f.read())
+
     def _user_data_entry(value):
+        if value.startswith('file:'):
+            return _user_data_file(value[5:])
+
         maintype, subtype = ('application', 'octet-stream')
         for magic, mime in _magic_to_mime.iteritems():
             if value.startswith(magic):
