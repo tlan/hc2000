@@ -336,7 +336,7 @@ def load_instance_definition(config):
     _resolve_symbolic_values(instance)
     return instance
 
-def run_action(config):
+def launch_action(config):
     instance = load_instance_definition(config)
 
     def command_line_override(option, key):
@@ -443,22 +443,21 @@ def parse_args(args=None):
 
     actions = parser.add_subparsers(title='actions')
 
-    run = actions.add_parser('run', argument_default=argparse.SUPPRESS)
-    run.add_argument('--client-token', metavar='<token>',
+    launch = actions.add_parser('launch', argument_default=argparse.SUPPRESS)
+    launch.add_argument('--client-token', metavar='<token>',
             help='User-defined token identifying the request. Use to ensure '
             'idempotent requests.')
-    run.add_argument('-n', '--instance-count', metavar='<count>',
-            help='Number of instances to run. Overrides \'count\' attribute '
-            'in instance definition.')
-    run.add_argument('-s', '--subnet', metavar='<subnet>',
+    launch.add_argument('-n', '--instance-count', metavar='<count>',
+            help='Number of instances to launch. Overrides \'count\' '
+            'attribute in instance definition.')
+    launch.add_argument('-s', '--subnet', metavar='<subnet>',
             help='Subnet identifier for started instances. Overrides '
             '\'subnet\' attribute in instance definition.')
-    run.add_argument('-z', '--availability-zone', metavar='<zone>',
+    launch.add_argument('-z', '--availability-zone', metavar='<zone>',
             help='Availability zone for started instances. Overrides '
             '\'availability-zone\' attribute in instance definition.')
-    run.add_argument('instance',
-            help='Path to instance definition file.')
-    run.set_defaults(actor=run_action)
+    launch.add_argument('instance', help='Path to instance definition file.')
+    launch.set_defaults(actor=launch_action)
 
     return parser.parse_args(args)
 
