@@ -204,6 +204,7 @@ def _xl_user_data(key):
         if isinstance(value, basestring) \
                 or not hasattr(value, '__iter__'):
             destination[key] = value
+            return
 
         data = email.mime.multipart.MIMEMultipart()
         for d in value:
