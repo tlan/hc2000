@@ -100,6 +100,9 @@ def _xl_join(key, string=','):
 
     return _join
 
+def _xl_ignore(destination, value):
+    pass
+
 def _apply_mapping(mapping, result, value):
     if hasattr(mapping, '__iter__'):
         for m in mapping:
@@ -327,10 +330,10 @@ auto_scaling_group_keys = auto_scaling_group_mapping.keys()
 
 for key in auto_scaling_group_keys:
     if key not in launch_configuration_mapping:
-        launch_configuration_mapping[key] = lambda x, y: None
+        launch_configuration_mapping[key] = _xl_ignore
 for key in launch_configuration_keys:
     if key not in auto_scaling_group_mapping:
-        auto_scaling_group_mapping[key] = lambda x, y: None
+        auto_scaling_group_mapping[key] = _xl_ignore
 
     # TODO: NetworkInterface
 
