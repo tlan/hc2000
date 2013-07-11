@@ -92,6 +92,14 @@ def _xl_set_value(key, value):
 
     return _set_value
 
+def _xl_join(key, string=','):
+    def _join(destination, value):
+        if isinstance(value, basestring):
+            value = [ value ]
+        destination[key] = string.join(value)
+
+    return _join
+
 def _apply_mapping(mapping, result, value):
     if hasattr(mapping, '__iter__'):
         for m in mapping:
@@ -299,7 +307,7 @@ auto_scaling_group_mapping = {
     'count':                        _xl_set_key('desired_capacity'),
     'min-count':                    _xl_set_key('min_size'),
     'max-count':                    _xl_set_key('max_size'),
-    'subnet':                       _xl_set_key('vpc_zone_identifier'),
+    'subnet':                       _xl_join('vpc_zone_identifier'),
     'availability-zone':            _xl_set_key('availability_zones'),
     'auto-scaling-cooldown':        _xl_set_key('default_cooldown'),
     'auto-scaling-grace-period':    _xl_set_key('health_check_period'),
