@@ -21,6 +21,9 @@ image: ami-c7c0d6b3 # Amazon Linux 64-bit, EBS-backed [ EU-West-1 ]
 key: hc2000
 security-groups: quick-start-1
 
+tags:
+    hc2000: examples/demo-4.yaml
+
 user-data: |
     #cloud-config
     repo_additions:

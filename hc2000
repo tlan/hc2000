@@ -213,6 +213,25 @@ def _xl_user_data(key):
 
     return _user_data
 
+# boto.ec2.autoscale.Tag unconditionally outputs optional parameters ResourceId
+# and ResourceType, requiring them to be set. _Tag works around that
+# constraint.
+class _Tag:
+    def __init__(self, key, value):
+        self.key = key
+        self.value = value
+
+    def build_params(self, params, i):
+        prefix = 'Tags.member.%d.' % i
+        params[prefix + 'Key'] = self.key
+        params[prefix + 'Value'] = self.value
+
+def _xl_as_tags(destination, value):
+    tags = []
+    for k, v in value.iteritems():
+        tags.append(_Tag(k, v))
+    destination['tags'] = tags
+
 run_instances_mapping = {
     'instance-type':        _xl_set_key('instance_type'),
     'ebs-optimized':        _xl_set_key('ebs_optimized'),
@@ -286,7 +305,7 @@ auto_scaling_group_mapping = {
     'auto-scaling-grace-period':    _xl_set_key('health_check_period'),
     'auto-scaling-health-check':    _xl_set_key('health_check_type'),
     'load-balancers':               _xl_set_key('load_balancers'),
-    'tags':                         _xl_set_key('tags'),
+    'tags':                         _xl_as_tags,
     'termination-policies':         _xl_set_key('termination_policies'),
 }
 
