@@ -5,7 +5,7 @@ instance-type: t1.micro
 spot-price: 0.02
 image: ami-c7c0d6b3 # Amazon Linux 64-bit, EBS-backed [ EU-West-1 ]
 key: hc2000
-security-groups: quick-start-1
+security-groups: hc2000-ssh
 
 # This will bootstrap standalone puppet through CloudInit and include
 # the puppet manifest in manifests/future.pp

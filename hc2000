@@ -367,6 +367,66 @@ def load_instance_definition(config):
     _resolve_symbolic_values(instance)
     return instance
 
+class BootstrapActor:
+    def __call__(self, config):
+        self.config = config
+        self.common_definitions = {}
+
+        self.ec2 = boto.ec2.connect_to_region(config.region,
+                aws_access_key_id=config.aws_access_key,
+                aws_secret_access_key=config.aws_secret_key)
+
+        self.create_key()
+        self.create_default_security_group()
+
+        self.write_common_configuration()
+
+    def _get_path(self, path):
+        path = path.format(region=self.config.region)
+        return os.path.join(self.config.path, path)
+
+    def create_key(self):
+        identities = self._get_path('identities')
+        if not os.path.isdir(identities):
+            os.makedirs(identities, 0700)
+
+        key = self.ec2.get_key_pair(self.config.key)
+        if key is None:
+            key = self.ec2.create_key_pair(self.config.key)
+            key.save(self._get_path('identities'))
+            print 'Identity file for %s key saved in %s' \
+                    % (self.config.key, identities)
+        else:
+            print 'Key %s already exists.' % self.config.key
+
+        self.common_definitions['key:default'] = self.config.key
+
+    def create_default_security_group(self):
+        groups = self.ec2.get_all_security_groups(
+                # Specifying group name as a filter avoids an exception being
+                # thrown when the group doesn't exist
+                filters={ 'group-name': self.config.security_group })
+        if len(groups) == 0:
+            print self.ec2.create_security_group(self.config.security_group,
+                    'Default security group set up by hc2000 bootstrap. This '
+                    'allows incoming SSH connections into instances.')
+            if not self.ec2.authorize_security_group(
+                    self.config.security_group, ip_protocol='tcp',
+                    from_port=22, to_port=22, cidr_ip='0.0.0.0/0'):
+                sys.stderr.write('Failed to open SSH port for incoming '
+                        'connections security group!\n')
+        else:
+            print 'Security group %s already exists.' \
+                    % self.config.security_group
+
+        self.common_definitions['security-groups:default'] = \
+                self.config.security_group
+
+    def write_common_configuration(self):
+        with open(self._get_path('~default~'), 'wb') as f:
+            f.write(yaml.dump(self.common_definitions,
+                default_flow_style=False))
+
 def launch_action(config):
     instance = load_instance_definition(config)
 
@@ -473,6 +533,16 @@ def parse_args(args=None):
             'loaded from the current directory.')
 
     actions = parser.add_subparsers(title='actions')
+
+    bootstrap = actions.add_parser('bootstrap')
+    bootstrap.add_argument('-k', '--key', default='hc2000', help='Name of the '
+            'key pair to be created.')
+    bootstrap.add_argument('--security-group', default='hc2000-ssh', help='Name '
+            'of the default security group that will be created. This group '
+            'allows incoming SSH connections, by default.')
+    bootstrap.add_argument('path', default='', nargs='?', help='Path to populate with '
+            'default setup. Defaults to current directory')
+    bootstrap.set_defaults(actor=BootstrapActor())
 
     launch = actions.add_parser('launch', argument_default=argparse.SUPPRESS)
     launch.add_argument('--client-token', metavar='<token>',

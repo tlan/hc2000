@@ -4,7 +4,7 @@ spot-price:         spot-price:default
 image:              image:amazon-linux:64-bit:ebs-backed
 
 key:                hc2000
-security-groups:    quick-start-1
+security-groups:    hc2000-ssh
 
 # Definitions
 image:amazon-linux:64-bit:ebs-backed:   ami-c7c0d6b3
