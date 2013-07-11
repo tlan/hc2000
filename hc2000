@@ -534,17 +534,20 @@ def parse_args(args=None):
 
     actions = parser.add_subparsers(title='actions')
 
-    bootstrap = actions.add_parser('bootstrap')
+    bootstrap = actions.add_parser('bootstrap', description='Set up SSH key '
+            'and default security group.')
     bootstrap.add_argument('-k', '--key', default='hc2000', help='Name of the '
             'key pair to be created.')
-    bootstrap.add_argument('--security-group', default='hc2000-ssh', help='Name '
-            'of the default security group that will be created. This group '
-            'allows incoming SSH connections, by default.')
-    bootstrap.add_argument('path', default='', nargs='?', help='Path to populate with '
-            'default setup. Defaults to current directory')
+    bootstrap.add_argument('--security-group', default='hc2000-ssh',
+            help='Name of the default security group that will be created. '
+            'This group allows incoming SSH connections, by default.')
+    bootstrap.add_argument('path', default='', nargs='?', help='Path to '
+            'populate with default setup. Defaults to current directory')
     bootstrap.set_defaults(actor=BootstrapActor())
 
-    launch = actions.add_parser('launch', argument_default=argparse.SUPPRESS)
+    launch = actions.add_parser('launch', argument_default=argparse.SUPPRESS,
+            description='Launch isolated instances, spot instances and '
+            'auto-scaling groups.')
     launch.add_argument('--client-token', metavar='<token>',
             help='User-defined token identifying the request. Use to ensure '
             'idempotent requests.')
