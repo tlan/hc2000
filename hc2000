@@ -68,8 +68,10 @@ def _xl_for_each(action):
 
     return _for_each
 
-def _xl_append_to_key(key):
+def _xl_append_to_key(key, transform=None):
     def _append_to_key(destination, value):
+        if transform is not None:
+            value = transform(value)
         if key in destination:
             destination[key].append(value)
         else:
