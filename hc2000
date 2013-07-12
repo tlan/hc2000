@@ -4,8 +4,10 @@ import argparse
 import boto.ec2
 import boto.ec2.autoscale
 import boto.ec2.blockdevicemapping
+import boto.iam
 import email.mime.base
 import email.mime.multipart
+import json
 import re
 import os
 import os.path
@@ -435,6 +437,114 @@ class BootstrapActor:
             f.write(yaml.dump(self.common_definitions,
                 default_flow_style=False))
 
+policy_statement_mapping = {
+    'action':   _xl_set_key('Action'),
+    'resource': _xl_set_key('Resource'),
+}
+
+def _xf_policy_statement(effect):
+    def _policy_statement(value):
+        statement = _translate(policy_statement_mapping, value)
+        statement['Effect'] = effect
+        return statement
+
+    return _policy_statement
+
+policy_mapping = {
+    'allow':    _xl_for_each(_xl_append_to_key('Statement',
+                        _xf_policy_statement('Allow'))),
+    'deny':     _xl_for_each(_xl_append_to_key('Statement',
+                        _xf_policy_statement('Deny'))),
+}
+
+def _xl_role_policy(destination, value):
+    policies = {}
+    for name, policy in value.iteritems():
+        policies[name] = _translate(policy_mapping, policy,
+                { 'Statement': [] })
+    destination['policy'] = policies
+
+role_mapping = {
+    'name':     [
+                    _xl_set_key('role'),
+                    _xl_set_key('instance_profile'),
+                ],
+    'path':     _xl_set_key('path'),
+    'policy':   _xl_role_policy,
+}
+
+class CreateRoleActor:
+    def __call__(self, config):
+        self.load_role_definition(config.role)
+
+        self.iam = boto.iam.connect_to_region('universal',
+                aws_access_key_id=config.aws_access_key,
+                aws_secret_access_key=config.aws_secret_key)
+
+        self.create_role()
+        self.create_instance_profile()
+        self.delete_dropped_role_policies()
+        self.update_role_policies()
+
+    def load_role_definition(self, filename):
+        with open(filename, 'rb') as f:
+            definition = yaml.safe_load(f)
+
+        definition = _translate(role_mapping, definition)
+        self.__dict__.update(definition)
+
+    def create_role(self):
+        try:
+            self.iam.get_role(self.role)
+        except boto.exception.BotoServerError as err:
+            if err.status == 404:
+                self.iam.create_role(self.role, path=self.path)
+            else:
+                raise
+
+    def create_instance_profile(self):
+        profile = { 'roles': {} }
+        try:
+            profile = self.iam.get_instance_profile(self.instance_profile) \
+                    ['get_instance_profile_response'] \
+                    ['get_instance_profile_result'] \
+                    ['instance_profile']
+        except boto.exception.BotoServerError as err:
+            if err.status == 404:
+                self.iam.create_instance_profile(
+                        self.instance_profile, path=self.path)
+            else:
+                raise
+
+        if 'member' in profile['roles'] \
+                and profile['roles']['member']['role_name'] == self.role:
+            return
+
+        if 'member' in profile['roles']:
+            self.iam.remove_role_from_instance_profile(
+                    self.instance_profile, self.role)
+        self.iam.add_role_to_instance_profile(self.instance_profile, self.role)
+
+    def delete_dropped_role_policies(self):
+        marker = None
+        while True:
+            result = self.iam.list_role_policies(self.role, marker) \
+                        ['list_role_policies_response'] \
+                        ['list_role_policies_result']
+
+            for policy in result['policy_names']:
+                if policy not in self.policies:
+                    self.iam.delete_role_policy(self.role, policy)
+
+            if 'marker' not in result:
+                break
+            marker = result['marker']
+
+    def update_role_policies(self):
+        for name, policy in self.policy.iteritems():
+            self.iam.put_role_policy(self.role, name, json.dumps(policy))
+
+
 def launch_action(config):
     instance = load_instance_definition(config)
 
@@ -570,6 +680,13 @@ def parse_args(args=None):
             '\'availability-zone\' attribute in instance definition.')
     launch.add_argument('instance', help='Path to instance definition file.')
     launch.set_defaults(actor=launch_action)
+
+    create_role = actions.add_parser('create-role',
+            description='Creates an IAM role with specified policies, and an '
+            'associated instance-profile, that can be used when launching '
+            'instances.')
+    create_role.add_argument('role', help='Path to role definition file.')
+    create_role.set_defaults(actor=CreateRoleActor())
 
     return parser.parse_args(args)
 
