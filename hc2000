@@ -124,8 +124,11 @@ _resolvable_prefixes = ('image:', 'kernel:', 'key:', 'load-balancers:',
 class ParameterError(Exception):
     pass
 
-def _translate(mappings, source):
-    result = {}
+def _translate(mappings, source, destination=None):
+    result = {} \
+            if destination is None \
+            else destination
+
     if '~defaults~' in mappings:
         _apply_defaults(mappings['~defaults~'], source)
     for key, value in source.iteritems():
