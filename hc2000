@@ -119,7 +119,7 @@ def _apply_defaults(defaults, source):
 _resolvable_prefixes = ('image:', 'kernel:', 'key:', 'load-balancers:',
     'ramdisk:', 'security-groups:', 'spot-price:', 'subnet:')
 
-def ParameterError(Exception):
+class ParameterError(Exception):
     pass
 
 def _translate(mappings, source):
