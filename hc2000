@@ -328,6 +328,7 @@ auto_scaling_group_mapping = {
     'load-balancers':               _xl_set_key('load_balancers'),
     'tags':                         _xl_as_tags,
     'termination-policies':         _xl_set_key('termination_policies'),
+    'schedule':                     _xl_ignore,
 }
 
 # Launch Configurations and Auto-Scaling Groups are meant to share
@@ -605,6 +606,15 @@ def _do_spot_request(config, definition):
     params = _translate(spot_request_mapping, definition)
     print ec2.request_spot_instances(**params)
 
+scheduled_auto_scaling_action = {
+    'count':        _xl_set_key('DesiredCapacity'),
+    'min-count':    _xl_set_key('MinSize'),
+    'max-count':    _xl_set_key('MaxSize'),
+    'start-time':   _xl_set_key('StartTime'),
+    'end-time':     _xl_set_key('EndTime'),
+    'recurrence':   _xl_set_key('Recurrence'),
+}
+
 def _do_auto_scaling(config, definition):
     autoscale = boto.ec2.autoscale.connect_to_region(config.region,
             aws_access_key_id=config.aws_access_key,
@@ -626,6 +636,17 @@ def _do_auto_scaling(config, definition):
 
     # TODO: Handle load balancers
     # TODO: Handle updates to both launch configuration and group
+
+    if 'schedule' in definition:
+        for name, schedule in definition['schedule'].iteritems():
+            params = _translate(scheduled_auto_scaling_action, schedule)
+            params['AutoScalingGroupName'] = definition['auto-scaling-group']
+            params['ScheduledActionName'] = name
+
+            response = autoscale.make_request('PutScheduledUpdateGroupAction', params)
+            if response.status != 200:
+                print 'Failed to schedule %s scaling action' % name
+                print response.read()
 
 def parse_args(args=None):
     parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
