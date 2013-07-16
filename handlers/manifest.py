@@ -1,6 +1,8 @@
 #part-handler
 
-import boto.utils
+import boto.s3.connection
+import boto.s3.bucket
+import boto.s3.key
 import grp
 import os
 import os.path
@@ -27,7 +29,7 @@ def _mk_parents(data, parts):
 def _get_key(data, source):
     bucket, _, key = source[len('s3://'):].partition('/')
     if data.s3 is None:
-        data.s3 = boto.connect_s3()
+        data.s3 = boto.s3.connection.S3Connection()
     if bucket not in data.buckets:
         data.buckets[bucket] = boto.s3.bucket.Bucket(data.s3, bucket)
     return boto.s3.key.Key(data.buckets[bucket], key)
