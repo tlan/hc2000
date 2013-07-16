@@ -44,13 +44,14 @@ def _mk_file(data, path, source, content, target):
     _mk_parents(data, parts[:-1])
     if not parts[-1]:
         return
-    with open(path, 'w+b') as f:
-        if content is not None:
-            f.write(content)
-        elif target is not None:
-            os.symlink(target, path)
-        else:
-            _fetch_file(data, source, f)
+    if target is not None:
+        os.symlink(target, path)
+    else:
+        with open(path, 'w+b') as file:
+            if content is not None:
+                file.write(content)
+            else:
+                _fetch_file(data, source, file)
     data.created.append(path)
 
 def _create(data):
