@@ -24,6 +24,21 @@ def _mk_parents(data, parts):
         except OSError:
             pass
 
+def _get_key(data, source):
+    bucket, _, key = source[len('s3://'):].partition('/')
+    if data.s3 is None:
+        data.s3 = boto.connect_s3()
+    if bucket not in data.buckets:
+        data.buckets[bucket] = boto.s3.bucket.Bucket(data.s3, bucket)
+    return boto.s3.key.Key(data.buckets[bucket], key)
+
+def _fetch_file(data, source, file):
+    if source.startswith('s3://'):
+        key = _get_key(data, source)
+        key.get_contents_to_file(file)
+    else:
+        raise NotImplementedError
+
 def _mk_file(data, path, source, content, target):
     parts = path.split('/')
     _mk_parents(data, parts[:-1])
@@ -35,7 +50,7 @@ def _mk_file(data, path, source, content, target):
         elif target is not None:
             os.symlink(target, path)
         else:
-            boto.utils.fetch_file(source, f)
+            _fetch_file(data, source, f)
     data.created.append(path)
 
 def _create(data):
@@ -113,6 +128,9 @@ class _HC2000:
     def __init__(self):
         self.files = {}
         self.created = []
+
+        self.s3 = None
+        self.buckets = {}
 
 def list_types():
     return [ 'text/hc2000-manifest' ]
