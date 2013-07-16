@@ -535,7 +535,7 @@ class CreateRoleActor:
                         ['list_role_policies_result']
 
             for policy in result['policy_names']:
-                if policy not in self.policies:
+                if policy not in self.policy:
                     self.iam.delete_role_policy(self.role, policy)
 
             if 'marker' not in result:
