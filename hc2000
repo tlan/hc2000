@@ -194,6 +194,7 @@ _magic_to_mime = {
     '#cloud-boothook':  ('text', 'cloud-boothook'),
     '#cloud-config':    ('text', 'cloud-config'),
     '#include':         ('text', 'x-include-url'),
+    '#manifest':        ('text', 'hc2000-manifest'),
     '#part-handler':    ('text', 'part-handler'),
     '#puppet':          ('text', 'puppet'),
     '#upstart-job':     ('text', 'upstart-job'),
@@ -545,6 +546,17 @@ class CreateRoleActor:
         for name, policy in self.policy.iteritems():
             self.iam.put_role_policy(self.role, name, json.dumps(policy))
 
+def _user_data_extension(instance, tag, translator, part_handler):
+    if tag not in instance:
+        return
+
+    if 'user-data' not in instance:
+        instance['user-data'] = []
+    elif isinstance(instance['user-data'], basestring):
+        instance['user-data'] = [ instance['user-data'] ]
+
+    instance['user-data'].append(part_handler)
+    translator(instance, instance.pop(tag))
 
 def launch_action(config):
     instance = load_instance_definition(config)
@@ -559,29 +571,32 @@ def launch_action(config):
     command_line_override('availability_zone', 'availability-zone')
 
     # FIXME: This should live as some sort of external plugin.
-    if 'puppet' in instance:
-        if 'user-data' not in instance:
-            instance['user-data'] = []
-        elif isinstance(instance['user-data'], basestring):
-            instance['user-data'] = [ instance['user-data'] ]
+    def _include_puppet(destination, value):
+        orig_value = value
+        if not value.endswith('.pp'):
+            value = value + '.pp'
+        found = False
+        for path in config.puppet_path:
+            path = os.path.join(path, value)
+            if os.path.exists(path):
+                destination['user-data'].append('file:' + path)
+                found = True
+        if not found:
+            print 'Couldn\'t find manifest for \'%s\'' % orig_value
 
-        def _include_puppet(destination, value):
-            orig_value = value
-            if not value.endswith('.pp'):
-                value = value + '.pp'
-            found = False
-            for path in config.puppet_path:
-                path = os.path.join(path, value)
-                if os.path.exists(path):
-                    destination['user-data'].append('file:' + path)
-                    found = True
-            if not found:
-                print 'Couldn\'t find manifest for \'%s\'' % orig_value
+    _user_data_extension(instance, 'puppet', _xl_for_each(_include_puppet),
+            'file:handlers/puppet.py')
 
-        instance['user-data'].append('file:handlers/puppet.py')
-        _xl_for_each(_include_puppet)(instance, instance['puppet'])
+    def _xf_manifest(value):
+        if not isinstance(value, basestring):
+            value = yaml.dump(value)
+        if not value.startswith(('file:', '#manifest\n')):
+            value = '#manifest\n' + value
+        return value
 
-        del instance['puppet']
+    _user_data_extension(instance, 'manifest',
+            _xl_for_each(_xl_append_to_key('user-data', _xf_manifest)),
+            'file:handlers/manifest.py')
 
     if 'auto-scaling-group' in instance:
         _do_auto_scaling(config, instance)
