@@ -59,7 +59,8 @@ def _create(data):
         _mk_file(data, path, attr['source'], attr['content'], attr['target'])
     for path in reversed(data.created):
         attr = data.files[path]
-        os.lchmod(path, attr['mode'])
+        if not attr.get('target', None):
+            os.chmod(path, attr['mode'])
         os.lchown(path, attr['uid'], attr['gid'])
 
 def _uid(user):
