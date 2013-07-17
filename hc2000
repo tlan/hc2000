@@ -264,6 +264,7 @@ run_instances_mapping = {
     'min-count':            _xl_set_key('min_count'),
     'max-count':            _xl_set_key('max_count'),
     'count':                _xl_set_key('max_count'),
+    'tags':                 _xl_ignore,
     'key':                  _xl_set_key('key_name'),
     'role':                 _xl_if(_xf_match('arn:aws:iam::'),
                                 _xl_set_key('instance_profile_arn'),
@@ -611,7 +612,16 @@ def _do_run_instance(config, definition):
             aws_secret_access_key=config.aws_secret_key)
 
     params = _translate(run_instances_mapping, definition)
-    print ec2.run_instances(**params)
+    reservation = ec2.run_instances(**params)
+
+    print reservation
+
+    if 'tags' in definition:
+        ec2.create_tags(
+                [ instance.id for instance in reservation.instances ],
+                definition['tags'])
+
+    print reservation.instances
 
 def _do_spot_request(config, definition):
     ec2 = boto.ec2.connect_to_region(config.region,
