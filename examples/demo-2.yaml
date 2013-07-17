@@ -3,6 +3,8 @@
 instance-type: t1.micro
 image: ami-c7c0d6b3 # Amazon Linux 64-bit, EBS-backed [ EU-West-1 ]
 
+tags: { launched-by: hc2000 }
+
 # key and security-group must refer to an existing Key Pair and Security
 # Group(s) in AWS. They can be created through AWS management console.
 # For the Security Group, ensure port 22 is open for incoming traffic so you
