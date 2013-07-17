@@ -1,0 +1,14 @@
+This tool aims to be a thin wrapper over AWS APIs. It's main development focus
+is on deployment scenarios, and translating API calls to a declarative syntax
+that can be maintained in version control. Extensions to the AWS APIs currently
+focus on integration and extension of CloudInit functionality.
+
+It is still very early in the development and some ideas are maturing. Expect
+changes on a whim and the ability to influence the project's direction (until I
+say no, that is :-p -- João)
+
+For now, hc2000 exposes a mostly seamless interface to running isolated
+instances, spot-priced instances, launch configurations and auto-scaling groups
+with scheduled activities.
+
+Look at the examples, the --help option and try to avoid the code for now ;-)
