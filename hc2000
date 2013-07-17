@@ -287,7 +287,7 @@ run_instances_mapping = {
 
 spot_request_mapping = run_instances_mapping.copy()
 # RunInstance arguments not supported in SpotRequests
-for key in [ 'min-count', 'max-count', 'ip-address', 'tenancy',
+for key in [ 'min-count', 'max-count', 'tags', 'ip-address', 'tenancy',
         'api-termination', 'shutdown-behavior', 'client-token' ]:
     del spot_request_mapping[key]
 # Configuration specific to SpotRequests
