@@ -83,6 +83,8 @@ def _is_absolute(path):
     return bool(re.match('((https?|s3):/)?/', path))
 
 def _join_paths(first, second):
+    if not second:
+        return first
     if _is_absolute(second):
         return second
     if first.endswith('/'):
@@ -113,7 +115,7 @@ def _load_entry(data, mapping):
         destination = file.pop('destination', filename)
         source = file.get('source', filename)
 
-        destination = os.path.join(default['destination'], destination)
+        destination = _join_paths(default['destination'], destination)
         file['source'] = _join_paths(default['source'], source)
         _resolve_owner_group(file)
 
