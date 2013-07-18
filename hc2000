@@ -13,6 +13,8 @@ import os
 import os.path
 import sys
 import yaml
+import hc2002.manifest
+import hc2002.validation
 
 def _load_definition(filename):
     try:
@@ -598,6 +600,25 @@ def launch_action(config):
     _user_data_extension(instance, 'manifest',
             _xl_for_each(_xl_append_to_key('user-data', _xf_manifest)),
             'file:handlers/manifest.py')
+
+    if isinstance(instance['user-data'], list):
+        for entry in instance['user-data']:
+            if not isinstance(entry, basestring):
+                continue
+
+            #FIXME: Should either move file inlining earlier of validation
+            #       later. Should NOT read the file twice.
+            if entry.startswith('file:'):
+                entry = open(entry[5:], 'rb').read()
+
+            if entry.startswith('#manifest'):
+                print "Validating manifest:\n", entry
+                ctx = hc2002.validation.validate(
+                        hc2002.manifest.validator, yaml.safe_load(entry))
+                if len(ctx.errors):
+                    for scope, msg in ctx.errors:
+                        sys.stderr.write('%s: %s\n' % (scope, msg))
+                    sys.exit(1)
 
     if 'auto-scaling-group' in instance:
         _do_auto_scaling(config, instance)
