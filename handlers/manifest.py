@@ -29,7 +29,12 @@ def _mk_parents(data, parts):
 def _get_key(data, source):
     bucket, _, key = source[len('s3://'):].partition('/')
     if data.s3 is None:
-        data.s3 = boto.s3.connection.S3Connection()
+        md = boto.utils.get_instance_metadata()
+        creds = md['iam']['security-credentials'].values()[0]
+        data.s3 = boto.s3.connection.S3Connection(
+                aws_access_key_id=creds['AccessKeyId'],
+                aws_secret_access_key=creds['SecretAccessKey'],
+                security_token=creds['Token'])
     if bucket not in data.buckets:
         data.buckets[bucket] = boto.s3.bucket.Bucket(data.s3, bucket)
     return boto.s3.key.Key(data.buckets[bucket], key)
