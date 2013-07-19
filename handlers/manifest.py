@@ -35,7 +35,7 @@ def _get_key(data, source):
         md_url = 'http://169.254.169.254/latest/meta-data/iam/security-credentials'
 
         role = _get_url(md_url)
-        creds = yaml.safe_load(md_url + '/' + role)
+        creds = yaml.safe_load(_get_url(md_url + '/' + role))
 
         data.s3 = boto.s3.connection.S3Connection(
                 aws_access_key_id=creds['AccessKeyId'],
