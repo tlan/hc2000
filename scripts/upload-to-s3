@@ -1,0 +1,39 @@
+#!/usr/bin/python
+# Upload to S3
+
+import argparse
+import boto
+import sys
+
+def error(message):
+    sys.stderr.write('%s\n' % message)
+    sys.stderr.flush()
+
+    sys.exit(1)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Upload files to S3, under a '
+            'common prefix.')
+    parser.add_argument('--strip', default='', help='Drop a common prefix '
+            'from source files. All sources must start with the prefix.')
+    parser.add_argument('source', nargs='+', help='Files to upload')
+    parser.add_argument('destination', help='Destination and common prefix '
+            'for all uploaded files.')
+
+    config = parser.parse_args()
+
+    for src in config.source:
+        if not src.startswith(config.strip):
+            error('File missing prefix to drop: %s (%s)' % (src, config.strip))
+
+    if not config.destination.startswith('s3://'):
+        error('Unsupported destination path: %s' % config.destination)
+
+    bucket_name, _, key_prefix = config.destination[5:].partition('/')
+
+    s3 = boto.connect_s3()
+    bucket = s3.get_bucket(bucket_name, validate=False)
+    for src in config.source:
+        key_suffix = src[len(config.strip):]
+        key = key_prefix + key_suffix
+        bucket.new_key(key).set_contents_from_filename(src)
