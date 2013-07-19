@@ -6,6 +6,7 @@ import os
 import os.path
 import pwd
 import re
+import urllib2
 import yaml
 
 def _mode_x_from_r(mode):
@@ -24,15 +25,23 @@ def _mk_parents(data, parts):
         except OSError:
             pass
 
+def _get_url(url):
+    response = urllib2.urlopen(url)
+    return response.read()
+
 def _get_key(data, source):
     bucket, _, key = source[len('s3://'):].partition('/')
     if data.s3 is None:
-        md = boto.utils.get_instance_metadata()
-        creds = md['iam']['security-credentials'].values()[0]
+        md_url = 'http://169.254.169.254/latest/meta-data/iam/security-credentials'
+
+        role = _get_url(md_url)
+        creds = yaml.safe_load(md_url + '/' + role)
+
         data.s3 = boto.s3.connection.S3Connection(
                 aws_access_key_id=creds['AccessKeyId'],
                 aws_secret_access_key=creds['SecretAccessKey'],
                 security_token=creds['Token'])
+
     if bucket not in data.buckets:
         data.buckets[bucket] = boto.s3.bucket.Bucket(data.s3, bucket)
     return boto.s3.key.Key(data.buckets[bucket], key)
