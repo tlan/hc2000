@@ -1,5 +1,3 @@
-#part-handler
-
 def list_types():
     return [ 'text/puppet' ]
 

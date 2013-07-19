@@ -549,9 +549,28 @@ class CreateRoleActor:
         for name, policy in self.policy.iteritems():
             self.iam.put_role_policy(self.role, name, json.dumps(policy))
 
-def _user_data_extension(instance, tag, translator, part_handler):
+_handlers_path = None
+
+def _get_handlers_path():
+    global _handlers_path
+    if not _handlers_path:
+        path = os.path.dirname(__file__)
+        print "Path:", path
+        path = os.path.abspath(path)
+        print "Path:", path
+        _handlers_path = os.path.join(path, 'handlers/')
+        print "Handlers path:", _handlers_path
+    return _handlers_path
+
+def _user_data_extension(instance, tag, translator):
     if tag not in instance:
         return
+
+    handler_path = os.path.join(_get_handlers_path(), tag + '.py')
+    with open(handler_path, 'rb') as f:
+        part_handler = f.read()
+    if not part_handler.startswith('#part-handler'):
+        part_handler = '#part-handler\n' + part_handler
 
     if 'user-data' not in instance:
         instance['user-data'] = []
@@ -587,8 +606,7 @@ def launch_action(config):
         if not found:
             print 'Couldn\'t find manifest for \'%s\'' % orig_value
 
-    _user_data_extension(instance, 'puppet', _xl_for_each(_include_puppet),
-            'file:handlers/puppet.py')
+    _user_data_extension(instance, 'puppet', _xl_for_each(_include_puppet))
 
     def _xf_manifest(value):
         if not isinstance(value, basestring):
@@ -598,8 +616,7 @@ def launch_action(config):
         return value
 
     _user_data_extension(instance, 'manifest',
-            _xl_for_each(_xl_append_to_key('user-data', _xf_manifest)),
-            'file:handlers/manifest.py')
+            _xl_for_each(_xl_append_to_key('user-data', _xf_manifest)))
 
     if isinstance(instance['user-data'], list):
         for entry in instance['user-data']:

@@ -1,5 +1,3 @@
-#part-handler
-
 import boto.s3.connection
 import boto.s3.bucket
 import boto.s3.key
