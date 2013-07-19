@@ -101,7 +101,7 @@ def at_most_one_of(*keys):
 def one_or_more(validator):
     def _one_or_more(data, context):
         if not isinstance(data, list):
-            return validator(data, context)
+            return _validate(validator, data, context)
         for i, element in enumerate(data):
             context.push_scope('[%i]' % i)
             _validate(validator, element, context)
