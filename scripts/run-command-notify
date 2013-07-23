@@ -7,6 +7,58 @@ import sys
 import tempfile
 import traceback
 
+def check_command(cmd_and_args):
+    """
+    Runs a command, returns tuple containing the exit status of the process,
+    combined standard output and standard error, and a backtrace, if
+    applicable.
+    """
+    status = None
+    out_and_err = None
+    trace = None
+
+    print 'Running command:', cmd_and_args
+    try:
+        with tempfile.TemporaryFile() as file:
+            p = Popen(cmd_and_args, stdout=file, stderr=STDOUT)
+            p.wait()
+
+            status = p.returncode
+            file.seek(0)
+            out_and_err = file.read()
+
+            print 'Exit status:', status
+            if out_and_err:
+                print 'Output:'
+                print out_and_err
+    except:
+        trace = traceback.format_exc()
+
+        print 'Caught exception:'
+        print trace
+
+    return (status, out_and_err, trace)
+
+def send_email(sender, subject, message, to=None, cc=None, bcc=None, reply_to=None):
+    """
+    Sends an e-mail using Amazon's SES.
+    """
+    ses = boto.ses.connect_to_region('us-east-1')
+    ses.send_email(sender, subject, message, to, cc, bcc,
+            reply_addresses=reply_to)
+
+def _prepare_message(status, output, trace):
+    message = '* Command: {command}\n' \
+        '* Exit status: {status}\n'
+    if output:
+        message += '* Standard Output (includes Standard Error):\n' \
+            '{output}---\n'
+    if trace:
+        message += '* {trace}\n'
+    message = message.format(command='\'' + '\' \''.join(args) + '\'',
+            status=status, output=output, trace=trace)
+    return message
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('sender')
@@ -18,24 +70,7 @@ if __name__ == '__main__':
 
     config, args = parser.parse_known_args()
 
-    message = '* Command: \'' + '\' \''.join(args) + '\'\n'
-    with tempfile.TemporaryFile() as file:
-        try:
-            p = Popen(args, stdout=file, stderr=STDOUT)
-            p.wait()
-
-            if p.returncode == 0:
-                sys.exit(0)
-
-            file.seek(0)
-            message += '* Return code: %s\n' % p.returncode
-            message += '* Output:\n'
-            message += file.read()
-            message += '\n\n'
-        except:
-            message += '* '
-            message += traceback.format_exc()
-
-    ses = boto.ses.connect_to_region('us-east-1')
-    ses.send_email(config.from, config.subject, message,
-            config.to, config.cc, config.bcc, reply_addresses=config.reply_to)
+    status, output, trace = check_command(args)
+    if status:
+        message = _prepare_message(status, output, trace)
+        send_email(message=message, **config.__dict__)
