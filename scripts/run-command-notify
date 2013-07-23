@@ -14,6 +14,7 @@ if __name__ == '__main__':
     parser.add_argument('--to', action='append')
     parser.add_argument('--cc', action='append')
     parser.add_argument('--bcc', action='append')
+    parser.add_argument('--reply-to', action='append')
 
     config, args = parser.parse_known_args()
 
@@ -37,4 +38,4 @@ if __name__ == '__main__':
 
     ses = boto.ses.connect_to_region('us-east-1')
     ses.send_email(config.from, config.subject, message,
-            config.to, config.cc, config.bcc)
+            config.to, config.cc, config.bcc, reply_addresses=config.reply_to)
