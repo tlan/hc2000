@@ -9,9 +9,9 @@ import traceback
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--from', required=True)
-    parser.add_argument('--subject', required=True)
-    parser.add_argument('--to', action='append')
+    parser.add_argument('sender')
+    parser.add_argument('subject')
+    parser.add_argument('--to', action='append', required=True)
     parser.add_argument('--cc', action='append')
     parser.add_argument('--bcc', action='append')
     parser.add_argument('--reply-to', action='append')
