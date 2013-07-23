@@ -10,4 +10,3 @@ security-groups:    hc2000-ssh
 image:amazon-linux:64-bit:ebs-backed:   ami-c7c0d6b3
 spot-price:default:                     spot-price:{instance-type}
 spot-price:t1.micro:                    0.020
-
