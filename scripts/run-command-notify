@@ -63,6 +63,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('sender')
     parser.add_argument('subject')
+    parser.add_argument('--notify', choices=[ 'always', 'error' ], default='error')
     parser.add_argument('--to', action='append', required=True)
     parser.add_argument('--cc', action='append')
     parser.add_argument('--bcc', action='append')
@@ -71,6 +72,8 @@ if __name__ == '__main__':
     config, args = parser.parse_known_args()
 
     status, output, trace = check_command(args)
-    if status:
+    if status or config.notify == 'always':
+        del config.notify
+
         message = _prepare_message(status, output, trace)
         send_email(message=message, **config.__dict__)
