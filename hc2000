@@ -325,13 +325,13 @@ auto_scaling_group_mapping = {
     'min-count':                    _xl_set_key('min_size'),
     'max-count':                    _xl_set_key('max_size'),
     'subnet':                       _xl_join('vpc_zone_identifier'),
-    'availability-zone':            _xl_set_key('availability_zones'),
+    'availability-zone':            _xl_for_each(_xl_append_to_key('availability_zones')),
     'auto-scaling-cooldown':        _xl_set_key('default_cooldown'),
     'auto-scaling-grace-period':    _xl_set_key('health_check_period'),
     'auto-scaling-health-check':    _xl_set_key('health_check_type'),
-    'load-balancers':               _xl_set_key('load_balancers'),
+    'load-balancers':               _xl_for_each(_xl_append_to_key('load_balancers')),
     'tags':                         _xl_as_tags,
-    'termination-policies':         _xl_set_key('termination_policies'),
+    'termination-policies':         _xl_for_each(_xl_append_to_key('termination_policies')),
     'schedule':                     _xl_ignore,
 }
 
