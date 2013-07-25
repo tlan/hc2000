@@ -56,7 +56,7 @@ hc2000 will output the reservation or spot-instance request identifiers. You'll
 be able to reference auto-scaling groups by the name specified in the instance
 definition.
 
-    $ ./hc2000 launch examples/demo-1.yaml
+    $ ./hc2000 launch examples/simple-instance.yaml
 
 Use ec2-describe-instances to find your instance and public hostname:
 

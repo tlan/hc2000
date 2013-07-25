@@ -1,5 +1,5 @@
-auto-scaling-group: demo-7-group
-launch-configuration: demo-7-config
+auto-scaling-group: hc2000:examples/auto-scaling-group-with-block-device-mapping.yaml
+launch-configuration: hc2000:examples/auto-scaling-group-with-block-device-mapping.yaml
 
 min-count: 0
 max-count: 1
@@ -14,7 +14,7 @@ key:                hc2000
 security-groups:    hc2000-ssh
 
 tags:
-    hc2000: examples/demo-7.yaml
+    hc2000: examples/auto-scaling-group-with-block-device-mapping.yaml
 
 block-devices:
     /dev/sdb:
