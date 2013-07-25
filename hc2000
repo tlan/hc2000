@@ -618,7 +618,8 @@ def launch_action(config):
     _user_data_extension(instance, 'manifest',
             _xl_for_each(_xl_append_to_key('user-data', _xf_manifest)))
 
-    if isinstance(instance['user-data'], list):
+    if 'user-data' in instance and \
+            isinstance(instance['user-data'], list):
         for entry in instance['user-data']:
             if not isinstance(entry, basestring):
                 continue
