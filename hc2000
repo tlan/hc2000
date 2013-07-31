@@ -201,8 +201,8 @@ run_instances_mapping = {
                                 xl.set_key('instance_profile_name')),
     'security-groups':      xl.for_each(
                                 xl.if_(xf.match('sg-[0-9A-Fa-f]+$'),
-                                    xl.append_to_key('security_group_ids'),
-                                    xl.append_to_key('security_groups'))),
+                                    xl.append_to('security_group_ids'),
+                                    xl.append_to('security_groups'))),
     'subnet':               xl.set_key('subnet_id'),
     'ip-address':           xl.set_key('private_ip_address'),
     'availability-zone':    xl.set_key('placement'),
@@ -239,7 +239,7 @@ launch_configuration_mapping = {
     'ramdisk':                  xl.set_key('ramdisk_id'),
     'key':                      xl.set_key('key_name'),
     'role':                     xl.set_key('instance_profile_name'),
-    'security-groups':          xl.for_each(xl.append_to_key('security_groups')),
+    'security-groups':          xl.for_each(xl.append_to('security_groups')),
     'user-data':                _xl_user_data('user_data'),
     'monitoring':               xl.set_key('instance_monitoring'),
     'ebs-optimized':            xl.set_key('ebs_optimized'),
@@ -253,13 +253,13 @@ auto_scaling_group_mapping = {
     'min-count':                    xl.set_key('min_size'),
     'max-count':                    xl.set_key('max_size'),
     'subnet':                       xl.join('vpc_zone_identifier'),
-    'availability-zone':            xl.for_each(xl.append_to_key('availability_zones')),
+    'availability-zone':            xl.for_each(xl.append_to('availability_zones')),
     'auto-scaling-cooldown':        xl.set_key('default_cooldown'),
     'auto-scaling-grace-period':    xl.set_key('health_check_period'),
     'auto-scaling-health-check':    xl.set_key('health_check_type'),
-    'load-balancers':               xl.for_each(xl.append_to_key('load_balancers')),
+    'load-balancers':               xl.for_each(xl.append_to('load_balancers')),
     'tags':                         _xl_as_tags,
-    'termination-policies':         xl.for_each(xl.append_to_key('termination_policies')),
+    'termination-policies':         xl.for_each(xl.append_to('termination_policies')),
     'schedule':                     xl.ignore,
 }
 
@@ -384,9 +384,9 @@ def _xf_policy_statement(effect):
     return _policy_statement
 
 policy_mapping = {
-    'allow':    xl.for_each(xl.append_to_key('Statement',
+    'allow':    xl.for_each(xl.append_to('Statement',
                         _xf_policy_statement('Allow'))),
-    'deny':     xl.for_each(xl.append_to_key('Statement',
+    'deny':     xl.for_each(xl.append_to('Statement',
                         _xf_policy_statement('Deny'))),
 }
 
@@ -544,7 +544,7 @@ def launch_action(config):
         return value
 
     _user_data_extension(instance, 'manifest',
-            xl.for_each(xl.append_to_key('user-data', _xf_manifest)))
+            xl.for_each(xl.append_to('user-data', _xf_manifest)))
 
     if 'user-data' in instance and \
             isinstance(instance['user-data'], list):

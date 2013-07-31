@@ -26,15 +26,15 @@ def for_each(action):
                 action(destination, v)
     return _for_each
 
-def append_to_key(key, transform=None):
-    def _append_to_key(destination, value):
+def append_to(key, transform=None):
+    def _append_to(destination, value):
         if transform is not None:
             value = transform(value)
         if key in destination:
             destination[key].append(value)
         else:
             destination[key] = [ value ]
-    return _append_to_key
+    return _append_to
 
 def switch(options):
     def _switch(destination, value):
