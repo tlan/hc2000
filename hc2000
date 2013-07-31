@@ -14,6 +14,7 @@ import os.path
 import sys
 import yaml
 import hc2002.manifest
+import hc2002.resource.role
 import hc2002.validation
 import hc2002.transform as xf
 import hc2002.translation as xl
@@ -423,6 +424,7 @@ class CreateRoleActor:
         with open(filename, 'rb') as f:
             definition = yaml.safe_load(f)
 
+        hc2002.validation.validate(hc2002.resource.role, definition)
         definition = _translate(role_mapping, definition)
         self.__dict__.update(definition)
 

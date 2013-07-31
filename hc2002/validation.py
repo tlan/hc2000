@@ -69,6 +69,15 @@ def validate_keys(keys):
                     unknown_keys)
     return _validate_keys
 
+def validate_values(validator):
+    def _validate_values(data, context):
+        for k, v in data.iteritems():
+            context.push_scope('.%s' % k)
+            _validate(validator, v, context)
+            context.pop_scope()
+        pass
+    return _validate_values
+
 def all_of(*validators):
     def _all_of(data, context):
         errors = len(context.errors)
