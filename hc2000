@@ -562,7 +562,7 @@ def launch_action(config):
             if entry.startswith('#manifest'):
                 print "Validating manifest:\n", entry
                 ctx = hc2002.validation.validate(
-                        hc2002.manifest.validator, yaml.safe_load(entry))
+                        hc2002.manifest, yaml.safe_load(entry))
                 if len(ctx.errors):
                     for scope, msg in ctx.errors:
                         sys.stderr.write('%s: %s\n' % (scope, msg))
