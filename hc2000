@@ -548,15 +548,16 @@ def parse_args(args=None, namespace=None):
     parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
 
     parser.add_argument('-O', '--aws-access-key', metavar='<key>',
-            default=os.environ.get('AWS_ACCESS_KEY'), help='AWS Access Key '
-            'ID. Defaults to AWS_ACCESS_KEY environment variable, if set.')
+            help='AWS Access Key ID. Defaults to AWS_ACCESS_KEY environment '
+            'variable, if set.')
     parser.add_argument('-W', '--aws-secret-key', metavar='<secret>',
-            default=os.environ.get('AWS_SECRET_KEY'), help='AWS Secret Access '
-            'Key. Defaults to AWS_SECRET_KEY environment variable, if set.')
+            help='AWS Secret Access Key. Defaults to AWS_SECRET_KEY '
+            'environment variable, if set.')
+
+    region_required = not hasattr(namespace, 'region') or not namespace.region
     parser.add_argument('--region', metavar='<region>',
-            default=os.environ.get('EC2_REGION'),
-            required=(os.environ.get('EC2_REGION') is None), help='AWS EC2 '
-            'Region. Defaults to EC2_REGION environment variable, if set.')
+            required=region_required, help='AWS EC2 Region. Defaults to '
+            'EC2_REGION environment variable, if set.')
 
     parser.add_argument('--instance-path', metavar='<path>', action='append',
             help='Append path to list of instance definition search paths. If '
