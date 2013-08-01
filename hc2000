@@ -365,34 +365,31 @@ class BootstrapActor:
 
 class CreateRoleActor:
     def __call__(self, config):
-        self.load_role_definition(config.role)
+        role = _load_definition(config.role)
+        hc2002.validation.validate(hc2002.resource.role, role)
 
         self.iam = hc2002.aws.iam.get_connection()
 
-        self.create_role()
-        self.create_instance_profile()
-        self.delete_dropped_role_policies()
-        self.update_role_policies()
+        self.create_role(role['name'], role['path'])
+        self.create_instance_profile(role['name'], role['path'])
+        self.delete_dropped_role_policies(role['name'], role['policy'])
+        self.update_role_policies(role['name'], role['policy'])
 
-    def load_role_definition(self, filename):
-        definition = _load_definition(filename)
-
-        hc2002.validation.validate(hc2002.resource.role, definition)
-        self.__dict__.update(definition)
-
-    def create_role(self):
+    def create_role(self, role, path='/'):
         try:
-            self.iam.get_role(self.name)
+            self.iam.get_role(role)
         except boto.exception.BotoServerError as err:
             if err.status != 404:
                 raise
-            self.iam.create_role(self.name, path=self.path)
+            self.iam.create_role(role, path=path)
 
-    def create_instance_profile(self):
+    def create_instance_profile(self, instance_profile, path='/', role=None):
+        if role is None: role = instance_profile
+
         profile_roles = {}
         try:
             profile_roles = \
-                self.iam.get_instance_profile(self.name) \
+                self.iam.get_instance_profile(instance_profile) \
                     ['get_instance_profile_response'] \
                     ['get_instance_profile_result'] \
                     ['instance_profile'] \
@@ -400,23 +397,23 @@ class CreateRoleActor:
         except boto.exception.BotoServerError as err:
             if err.status != 404:
                 raise
-            self.iam.create_instance_profile(self.name, path=self.path)
+            self.iam.create_instance_profile(instance_profile, path=path)
 
         if 'member' in profile_roles:
-            if profile_roles['member']['role_name'] == self.name:
+            if profile_roles['member']['role_name'] == role:
                 return
-            self.iam.remove_role_from_instance_profile(self.name, self.name)
-        self.iam.add_role_to_instance_profile(self.name, self.name)
+            self.iam.remove_role_from_instance_profile(instance_profile, role)
+        self.iam.add_role_to_instance_profile(instance_profile, role)
 
-    def delete_dropped_role_policies(self):
+    def delete_dropped_role_policies(self, role, policy):
         result = { 'marker': None }
         while 'marker' in result:
-            result = self.iam.list_role_policies(self.name, result['marker']) \
+            result = self.iam.list_role_policies(role, result['marker']) \
                     ['list_role_policies_response'] \
                     ['list_role_policies_result']
-            for policy in result['policy_names']:
-                if policy not in self.policy:
-                    self.iam.delete_role_policy(self.name, policy)
+            for name in result['policy_names']:
+                if name not in policy:
+                    self.iam.delete_role_policy(role, name)
 
     def _translate_role_policy(self, policy):
         policy_statements = []
@@ -431,9 +428,9 @@ class CreateRoleActor:
                 policy_statements.append(statement)
         return json.dumps({ 'Statement': policy_statements })
 
-    def update_role_policies(self):
-        for name, policy in self.policy.iteritems():
-            self.iam.put_role_policy(self.name, name,
+    def update_role_policies(self, role, policy):
+        for name, policy in policy.iteritems():
+            self.iam.put_role_policy(role, name,
                     self._translate_role_policy(policy))
 
 _handlers_path = None
