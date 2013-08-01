@@ -5,8 +5,8 @@
 # no instances are actually started. Note that auto-scaling groups can't be
 # deleted while they have running instances associated.
 
-auto-scaling-group: hc2000:examples/auto-scaling-group-with-spot-instances.yaml
-launch-configuration: hc2000:examples/auto-scaling-group-with-spot-instances.yaml
+auto-scaling-group: hc2000/examples/auto-scaling-group-with-spot-instances.yaml
+launch-configuration: hc2000/examples/auto-scaling-group-with-spot-instances.yaml
 
 min-count: 0
 max-count: 1

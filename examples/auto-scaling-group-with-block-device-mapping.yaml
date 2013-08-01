@@ -1,5 +1,5 @@
-auto-scaling-group: hc2000:examples/auto-scaling-group-with-block-device-mapping.yaml
-launch-configuration: hc2000:examples/auto-scaling-group-with-block-device-mapping.yaml
+auto-scaling-group: hc2000/examples/auto-scaling-group-with-block-device-mapping.yaml
+launch-configuration: hc2000/examples/auto-scaling-group-with-block-device-mapping.yaml
 
 min-count: 0
 max-count: 1
