@@ -13,6 +13,7 @@ import os
 import os.path
 import sys
 import yaml
+import hc2002.config
 import hc2002.manifest
 import hc2002.resource.role
 import hc2002.validation
@@ -637,7 +638,7 @@ def _do_auto_scaling(config, definition):
                 print 'Failed to schedule %s scaling action' % name
                 print response.read()
 
-def parse_args(args=None):
+def parse_args(args=None, namespace=None):
     parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
 
     parser.add_argument('-O', '--aws-access-key', metavar='<key>',
@@ -698,7 +699,7 @@ def parse_args(args=None):
     create_role.add_argument('role', help='Path to role definition file.')
     create_role.set_defaults(actor=CreateRoleActor())
 
-    return parser.parse_args(args)
+    return parser.parse_args(args, namespace)
 
 def set_default_config(config):
     if config.instance_path is None:
@@ -707,6 +708,6 @@ def set_default_config(config):
         config.puppet_path = [ '.' ]
 
 if __name__ == '__main__':
-    config = parse_args()
+    config = parse_args(namespace=hc2002.config)
     set_default_config(config)
     config.actor(config)
