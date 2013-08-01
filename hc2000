@@ -4,7 +4,6 @@ import argparse
 import boto.ec2
 import boto.ec2.autoscale
 import boto.ec2.blockdevicemapping
-import boto.iam
 import email.mime.base
 import email.mime.multipart
 import json
@@ -12,6 +11,7 @@ import os
 import os.path
 import sys
 import yaml
+import hc2002.aws.iam
 import hc2002.config
 import hc2002.manifest
 import hc2002.resource.role
@@ -367,9 +367,7 @@ class CreateRoleActor:
     def __call__(self, config):
         self.load_role_definition(config.role)
 
-        self.iam = boto.iam.connect_to_region('universal',
-                aws_access_key_id=config.aws_access_key,
-                aws_secret_access_key=config.aws_secret_key)
+        self.iam = hc2002.aws.iam.get_connection()
 
         self.create_role()
         self.create_instance_profile()
