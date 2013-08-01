@@ -423,10 +423,9 @@ class CreateRoleActor:
         try:
             self.iam.get_role(self.role)
         except boto.exception.BotoServerError as err:
-            if err.status == 404:
-                self.iam.create_role(self.role, path=self.path)
-            else:
+            if err.status != 404:
                 raise
+            self.iam.create_role(self.role, path=self.path)
 
     def create_instance_profile(self):
         profile = { 'roles': {} }
@@ -436,11 +435,10 @@ class CreateRoleActor:
                     ['get_instance_profile_result'] \
                     ['instance_profile']
         except boto.exception.BotoServerError as err:
-            if err.status == 404:
-                self.iam.create_instance_profile(
-                        self.instance_profile, path=self.path)
-            else:
+            if err.status != 404:
                 raise
+            self.iam.create_instance_profile(
+                    self.instance_profile, path=self.path)
 
         if 'member' in profile['roles'] \
                 and profile['roles']['member']['role_name'] == self.role:
