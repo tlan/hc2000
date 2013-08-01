@@ -428,41 +428,36 @@ class CreateRoleActor:
             self.iam.create_role(self.role, path=self.path)
 
     def create_instance_profile(self):
-        profile = { 'roles': {} }
+        profile_roles = {}
         try:
-            profile = self.iam.get_instance_profile(self.instance_profile) \
+            profile_roles = \
+                self.iam.get_instance_profile(self.instance_profile) \
                     ['get_instance_profile_response'] \
                     ['get_instance_profile_result'] \
-                    ['instance_profile']
+                    ['instance_profile'] \
+                    ['roles']
         except boto.exception.BotoServerError as err:
             if err.status != 404:
                 raise
             self.iam.create_instance_profile(
                     self.instance_profile, path=self.path)
 
-        if 'member' in profile['roles'] \
-                and profile['roles']['member']['role_name'] == self.role:
-            return
-
-        if 'member' in profile['roles']:
+        if 'member' in profile_roles:
+            if profile_roles['member']['role_name'] == self.role:
+                return
             self.iam.remove_role_from_instance_profile(
                     self.instance_profile, self.role)
         self.iam.add_role_to_instance_profile(self.instance_profile, self.role)
 
     def delete_dropped_role_policies(self):
-        marker = None
-        while True:
-            result = self.iam.list_role_policies(self.role, marker) \
-                        ['list_role_policies_response'] \
-                        ['list_role_policies_result']
-
+        result = { 'marker': None }
+        while 'marker' in result:
+            result = self.iam.list_role_policies(self.role, result['marker']) \
+                    ['list_role_policies_response'] \
+                    ['list_role_policies_result']
             for policy in result['policy_names']:
                 if policy not in self.policy:
                     self.iam.delete_role_policy(self.role, policy)
-
-            if 'marker' not in result:
-                break
-            marker = result['marker']
 
     def update_role_policies(self):
         for name, policy in self.policy.iteritems():
