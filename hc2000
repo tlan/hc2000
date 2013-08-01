@@ -8,7 +8,6 @@ import boto.iam
 import email.mime.base
 import email.mime.multipart
 import json
-import re
 import os
 import os.path
 import sys
