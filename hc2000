@@ -413,8 +413,7 @@ class CreateRoleActor:
         self.update_role_policies()
 
     def load_role_definition(self, filename):
-        with open(filename, 'rb') as f:
-            definition = yaml.safe_load(f)
+        definition = _load_definition(filename)
 
         hc2002.validation.validate(hc2002.resource.role, definition)
         definition = _translate(role_mapping, definition)
