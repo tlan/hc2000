@@ -6,7 +6,6 @@ import boto.ec2.autoscale
 import boto.ec2.blockdevicemapping
 import email.mime.base
 import email.mime.multipart
-import json
 import os
 import os.path
 import sys
@@ -363,75 +362,9 @@ class BootstrapActor:
             f.write(yaml.dump(self.common_definitions,
                 default_flow_style=False))
 
-class CreateRoleActor:
-    def __call__(self, config):
-        role = _load_definition(config.role)
-        hc2002.validation.validate(hc2002.resource.role, role)
-
-        self.iam = hc2002.aws.iam.get_connection()
-
-        self.create_role(role['name'], role['path'])
-        self.create_instance_profile(role['name'], role['path'])
-        self.delete_dropped_role_policies(role['name'], role['policy'])
-        self.update_role_policies(role['name'], role['policy'])
-
-    def create_role(self, role, path='/'):
-        try:
-            self.iam.get_role(role)
-        except boto.exception.BotoServerError as err:
-            if err.status != 404:
-                raise
-            self.iam.create_role(role, path=path)
-
-    def create_instance_profile(self, instance_profile, path='/', role=None):
-        if role is None: role = instance_profile
-
-        profile_roles = {}
-        try:
-            profile_roles = \
-                self.iam.get_instance_profile(instance_profile) \
-                    ['get_instance_profile_response'] \
-                    ['get_instance_profile_result'] \
-                    ['instance_profile'] \
-                    ['roles']
-        except boto.exception.BotoServerError as err:
-            if err.status != 404:
-                raise
-            self.iam.create_instance_profile(instance_profile, path=path)
-
-        if 'member' in profile_roles:
-            if profile_roles['member']['role_name'] == role:
-                return
-            self.iam.remove_role_from_instance_profile(instance_profile, role)
-        self.iam.add_role_to_instance_profile(instance_profile, role)
-
-    def delete_dropped_role_policies(self, role, policy):
-        result = { 'marker': None }
-        while 'marker' in result:
-            result = self.iam.list_role_policies(role, result['marker']) \
-                    ['list_role_policies_response'] \
-                    ['list_role_policies_result']
-            for name in result['policy_names']:
-                if name not in policy:
-                    self.iam.delete_role_policy(role, name)
-
-    def _translate_role_policy(self, policy):
-        policy_statements = []
-        for effect, statements in policy.iteritems():
-            effect = effect.capitalize()
-            for s in statements:
-                statement = {
-                    'Effect': effect,
-                    'Action': s['action'],
-                    'Resource': s['resource'],
-                }
-                policy_statements.append(statement)
-        return json.dumps({ 'Statement': policy_statements })
-
-    def update_role_policies(self, role, policy):
-        for name, policy in policy.iteritems():
-            self.iam.put_role_policy(role, name,
-                    self._translate_role_policy(policy))
+def create_role_action(config):
+    role = _load_definition(config.role)
+    hc2002.resource.role.create(role)
 
 _handlers_path = None
 
@@ -658,7 +591,7 @@ def parse_args(args=None, namespace=None):
             'associated instance-profile, that can be used when launching '
             'instances.')
     create_role.add_argument('role', help='Path to role definition file.')
-    create_role.set_defaults(actor=CreateRoleActor())
+    create_role.set_defaults(actor=create_role_action)
 
     return parser.parse_args(args, namespace)
 
