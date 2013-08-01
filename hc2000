@@ -511,6 +511,8 @@ def _do_auto_scaling(config, definition):
         print "Launch configuration:", params
         launcher = boto.ec2.autoscale.launchconfig.LaunchConfiguration(autoscale, **params)
         print autoscale.create_launch_configuration(launcher)
+    else:
+        print '=> Launch configuration already exists, skipping'
 
     group = autoscale.get_all_groups(names=[ definition['auto-scaling-group'] ])
     if len(group) == 0:
@@ -525,6 +527,8 @@ def _do_auto_scaling(config, definition):
         print "Auto scaling groups:", params
         group = boto.ec2.autoscale.group.AutoScalingGroup(autoscale, **params)
         print autoscale.create_auto_scaling_group(group)
+    else:
+        print '=> Auto-scaling group already exists, skipping'
 
     # TODO: Handle load balancers
     # TODO: Handle updates to both launch configuration and group
