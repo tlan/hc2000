@@ -14,6 +14,7 @@ import hc2002.aws.iam
 import hc2002.config
 import hc2002.manifest
 import hc2002.resource.role
+import hc2002.resource.loadbalancer
 import hc2002.validation
 import hc2002.transform as xf
 import hc2002.translation as xl
@@ -513,6 +514,13 @@ def _do_auto_scaling(config, definition):
 
     group = autoscale.get_all_groups(names=[ definition['auto-scaling-group'] ])
     if len(group) == 0:
+        if 'load-balancers' in definition:
+            lb = definition['load-balancers']
+            if not isinstance(lb, list):
+                lb = [ lb ]
+            print '* Checking that load balancers exist:', lb
+            hc2002.resource.loadbalancer.list(lb)
+
         params = _translate(auto_scaling_group_mapping, definition)
         print "Auto scaling groups:", params
         group = boto.ec2.autoscale.group.AutoScalingGroup(autoscale, **params)
