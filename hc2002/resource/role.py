@@ -90,18 +90,26 @@ def _set_role_policy(role, policy):
         policy = _translate_role_policy(policy)
         iam.put_role_policy(role, name, policy)
 
-def _delete_legacy_policies(role, policy):
-    """Deletes from an IAM role those policies that are not present in the
-    policy mapping passed as argument.
-    """
+def _list_role_policies(role):
     result = { 'marker': None }
     while 'marker' in result:
         result = iam.list_role_policies(role, result['marker']) \
                 ['list_role_policies_response'] \
                 ['list_role_policies_result']
         for name in result['policy_names']:
-            if name not in policy:
-                iam.delete_role_policy(role, name)
+            yield name
+
+def _delete_legacy_policies(role, policy):
+    """Deletes from an IAM role those policies that are not present in the
+    policy mapping passed as argument.
+    """
+    legacy_policies = []
+    for policy_name in _list_role_policies(role):
+        if policy_name not in policy:
+            legacy_policies.append(policy_name)
+
+    for policy in legacy_policies:
+        iam.delete_role_policy(role, name)
 
 def create(role):
     _setup_iam_connection()
@@ -112,3 +120,12 @@ def create(role):
     _create_instance_profile(role['name'], role['path'])
     _set_role_policy(role['name'], role['policy'])
     _delete_legacy_policies(role['name'], role['policy'])
+
+def delete(name):
+    _setup_iam_connection()
+
+    iam.remove_role_from_instance_profile(name, name)
+    iam.delete_instance_profile(name)
+    for policy in _list_role_policies(name):
+        iam.delete_role_policy(name, policy)
+    iam.delete_role(name)
