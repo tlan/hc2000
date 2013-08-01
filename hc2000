@@ -363,42 +363,6 @@ class BootstrapActor:
             f.write(yaml.dump(self.common_definitions,
                 default_flow_style=False))
 
-policy_statement_mapping = {
-    'action':   xl.set_key('Action'),
-    'resource': xl.set_key('Resource'),
-}
-
-def _xf_policy_statement(effect):
-    def _policy_statement(value):
-        statement = _translate(policy_statement_mapping, value)
-        statement['Effect'] = effect
-        return statement
-
-    return _policy_statement
-
-policy_mapping = {
-    'allow':    xl.for_each(xl.append_to('Statement',
-                        _xf_policy_statement('Allow'))),
-    'deny':     xl.for_each(xl.append_to('Statement',
-                        _xf_policy_statement('Deny'))),
-}
-
-def _xl_role_policy(destination, value):
-    policies = {}
-    for name, policy in value.iteritems():
-        policies[name] = _translate(policy_mapping, policy,
-                { 'Statement': [] })
-    destination['policy'] = policies
-
-role_mapping = {
-    'name':     [
-                    xl.set_key('role'),
-                    xl.set_key('instance_profile'),
-                ],
-    'path':     xl.set_key('path'),
-    'policy':   _xl_role_policy,
-}
-
 class CreateRoleActor:
     def __call__(self, config):
         self.load_role_definition(config.role)
@@ -416,22 +380,21 @@ class CreateRoleActor:
         definition = _load_definition(filename)
 
         hc2002.validation.validate(hc2002.resource.role, definition)
-        definition = _translate(role_mapping, definition)
         self.__dict__.update(definition)
 
     def create_role(self):
         try:
-            self.iam.get_role(self.role)
+            self.iam.get_role(self.name)
         except boto.exception.BotoServerError as err:
             if err.status != 404:
                 raise
-            self.iam.create_role(self.role, path=self.path)
+            self.iam.create_role(self.name, path=self.path)
 
     def create_instance_profile(self):
         profile_roles = {}
         try:
             profile_roles = \
-                self.iam.get_instance_profile(self.instance_profile) \
+                self.iam.get_instance_profile(self.name) \
                     ['get_instance_profile_response'] \
                     ['get_instance_profile_result'] \
                     ['instance_profile'] \
@@ -439,29 +402,41 @@ class CreateRoleActor:
         except boto.exception.BotoServerError as err:
             if err.status != 404:
                 raise
-            self.iam.create_instance_profile(
-                    self.instance_profile, path=self.path)
+            self.iam.create_instance_profile(self.name, path=self.path)
 
         if 'member' in profile_roles:
-            if profile_roles['member']['role_name'] == self.role:
+            if profile_roles['member']['role_name'] == self.name:
                 return
-            self.iam.remove_role_from_instance_profile(
-                    self.instance_profile, self.role)
-        self.iam.add_role_to_instance_profile(self.instance_profile, self.role)
+            self.iam.remove_role_from_instance_profile(self.name, self.name)
+        self.iam.add_role_to_instance_profile(self.name, self.name)
 
     def delete_dropped_role_policies(self):
         result = { 'marker': None }
         while 'marker' in result:
-            result = self.iam.list_role_policies(self.role, result['marker']) \
+            result = self.iam.list_role_policies(self.name, result['marker']) \
                     ['list_role_policies_response'] \
                     ['list_role_policies_result']
             for policy in result['policy_names']:
                 if policy not in self.policy:
-                    self.iam.delete_role_policy(self.role, policy)
+                    self.iam.delete_role_policy(self.name, policy)
+
+    def _translate_role_policy(self, policy):
+        policy_statements = []
+        for effect, statements in policy.iteritems():
+            effect = effect.capitalize()
+            for s in statements:
+                statement = {
+                    'Effect': effect,
+                    'Action': s['action'],
+                    'Resource': s['resource'],
+                }
+                policy_statements.append(statement)
+        return json.dumps({ 'Statement': policy_statements })
 
     def update_role_policies(self):
         for name, policy in self.policy.iteritems():
-            self.iam.put_role_policy(self.role, name, json.dumps(policy))
+            self.iam.put_role_policy(self.name, name,
+                    self._translate_role_policy(policy))
 
 _handlers_path = None
 
