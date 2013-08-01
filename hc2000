@@ -45,12 +45,6 @@ def _apply_mapping(mapping, result, value):
     else:
         mapping(result, value)
 
-def _apply_defaults(defaults, source):
-    if hasattr(defaults, 'iteritems'):
-        for k, v in defaults.iteritems():
-            if k not in source:
-                source[k] = v
-
 _resolvable_prefixes = ('image:', 'kernel:', 'key:', 'load-balancers:',
     'ramdisk:', 'security-groups:', 'spot-price:', 'subnet:')
 
@@ -62,8 +56,6 @@ def _translate(mappings, source, destination=None):
             if destination is None \
             else destination
 
-    if '~defaults~' in mappings:
-        _apply_defaults(mappings['~defaults~'], source)
     for key, value in source.iteritems():
         if key in mappings:
             _apply_mapping(mappings[key], result, value)
@@ -73,7 +65,6 @@ def _translate(mappings, source, destination=None):
     return result
 
 ec2_block_device_mapping = {
-    '~defaults~':   { 'disposable': True },
     'source':       xl.switch({
                         'no-device':            xl.set_value('no_device', True),
                         'ephemeral[0-9]':       xl.set_key('ephemeral_name'),
@@ -101,7 +92,8 @@ def _xl_ec2_block_devices(key):
     def _block_devices(destination, value):
         bdm = boto.ec2.blockdevicemapping.BlockDeviceMapping()
         for k, v in value.iteritems():
-            params = _translate(ec2_block_device_mapping, v)
+            params = _translate(ec2_block_device_mapping, v,
+                    { 'delete_on_termination': True })
             bdm[k] = boto.ec2.blockdevicemapping.BlockDeviceType(**params)
         destination[key] = bdm
 
