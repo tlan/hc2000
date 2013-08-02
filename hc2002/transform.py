@@ -5,4 +5,3 @@ def match(pattern):
     def _match(value):
         return regex.match(value)
     return _match
-

@@ -6,5 +6,4 @@ def _setup_elb_connection():
 
 def list(names=None):
     _setup_elb_connection()
-
     return elb.get_all_load_balancers(names)

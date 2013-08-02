@@ -58,4 +58,3 @@ def join(key, string=','):
 
 def ignore(destination, value):
     pass
-
