@@ -1,3 +1,5 @@
+import re
+
 class Context:
     def __init__(self, initial_scope=None):
         self.scope = []
@@ -139,3 +141,10 @@ url = basestring
 def file_mode(data, context):
     if 0777 != data | 0777:
         context.error("Invalid file mode", data)
+
+def match(pattern):
+    regex = re.compile(pattern)
+    def _match(data, context):
+        if not regex.match(data):
+            context.error('Value does not match: %s' % pattern, data)
+    return _match
