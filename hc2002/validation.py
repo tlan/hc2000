@@ -3,15 +3,10 @@ class Context:
         self.scope = []
         self.errors = []
 
-    def current_scope(self):
-        return ''.join(self.scope)
-    def push_scope(self, scope):
-        self.scope.append(scope)
-    def pop_scope(self):
-        self.scope.pop()
+    def get_scope(self): return ''.join(self.scope)
 
     def error(self, message, value):
-        self.errors.append((self.current_scope(), \
+        self.errors.append((self.get_scope(), \
                 'Expected %s, got %s' % (message, value)))
 
     def __bool__(self):
@@ -50,9 +45,9 @@ def tolerant_dict(dict_):
     def _tolerant_dict(data, context):
         for k, v in data.iteritems():
             if k in dict_:
-                context.push_scope('.%s' % k)
+                context.scope.append('.%s' % k)
                 _validate(dict_[k], v, context)
-                context.pop_scope()
+                context.scope.pop()
     return all_of(is_(dict), _tolerant_dict)
 
 def strict_dict(dict_):
@@ -72,9 +67,9 @@ def validate_keys(keys):
 def validate_values(validator):
     def _validate_values(data, context):
         for k, v in data.iteritems():
-            context.push_scope('.%s' % k)
+            context.scope.append('.%s' % k)
             _validate(validator, v, context)
-            context.pop_scope()
+            context.scope.pop()
         pass
     return _validate_values
 
@@ -112,9 +107,9 @@ def one_or_more(validator):
         if not isinstance(data, list):
             return _validate(validator, data, context)
         for i, element in enumerate(data):
-            context.push_scope('[%i]' % i)
+            context.scope.append('[%i]' % i)
             _validate(validator, element, context)
-            context.pop_scope()
+            context.scope.pop()
     return _one_or_more
 
 def prefix(prefix):
