@@ -120,7 +120,7 @@ def one_or_more(validator):
 def prefix(prefix):
     def _prefix(data, context):
         if not data.startswith(prefix):
-            context.error('Expected prefix %s' % prefix, data)
+            context.error('prefix %s' % str(prefix), data)
     return _prefix
 
 path = basestring
