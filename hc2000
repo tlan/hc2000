@@ -11,6 +11,8 @@ import os.path
 import sys
 import yaml
 import hc2002.aws.iam
+import hc2002.aws.ec2
+import hc2002.aws.auto_scaling
 import hc2002.config
 import hc2002.manifest
 import hc2002.resource.instance
@@ -309,9 +311,7 @@ class BootstrapActor:
         self.config = config
         self.common_definitions = {}
 
-        self.ec2 = boto.ec2.connect_to_region(config.region,
-                aws_access_key_id=config.aws_access_key,
-                aws_secret_access_key=config.aws_secret_key)
+        self.ec2 = hc2002.aws.ec2.get_connection()
 
         self.create_key()
         self.create_default_security_group()
@@ -473,9 +473,7 @@ def _do_run_instance(config, definition):
     validate(hc2002.resource.instance, definition, 'instance') \
             or sys.exit(1)
 
-    ec2 = boto.ec2.connect_to_region(config.region,
-            aws_access_key_id=config.aws_access_key,
-            aws_secret_access_key=config.aws_secret_key)
+    ec2 = hc2002.aws.ec2.get_connection()
 
     params = _translate(run_instances_mapping, definition)
     reservation = ec2.run_instances(**params)
@@ -490,9 +488,7 @@ def _do_run_instance(config, definition):
     print reservation.instances
 
 def _do_spot_request(config, definition):
-    ec2 = boto.ec2.connect_to_region(config.region,
-            aws_access_key_id=config.aws_access_key,
-            aws_secret_access_key=config.aws_secret_key)
+    ec2 = hc2002.aws.ec2.get_connection()
 
     params = _translate(spot_request_mapping, definition)
     print yaml.dump(params, default_flow_style=False)
@@ -510,9 +506,7 @@ scheduled_auto_scaling_action = {
 }
 
 def _do_auto_scaling(config, definition):
-    autoscale = boto.ec2.autoscale.connect_to_region(config.region,
-            aws_access_key_id=config.aws_access_key,
-            aws_secret_access_key=config.aws_secret_key)
+    autoscale = hc2002.aws.auto_scaling.get_connection()
 
     launcher = autoscale.get_all_launch_configurations(names=[ definition['launch-configuration'] ])
     if len(launcher) == 0:
