@@ -1,8 +1,11 @@
 class Context:
-    def __init__(self):
+    def __init__(self, initial_scope=None):
         self.scope = []
         self.errors = []
         self.error_prefix = []
+
+        if initial_scope is not None:
+            self.scope.append(initial_scope)
 
     def get_scope(self): return ''.join(self.scope)
     def get_error_prefix(self): return ''.join(self.error_prefix)
@@ -31,8 +34,8 @@ def as_validator(validator):
 def _validate(validator, data, context):
     as_validator(validator)(data, context)
 
-def validate(validator, data):
-    context = Context()
+def validate(validator, data, initial_scope=None):
+    context = Context(initial_scope)
     _validate(validator, data, context)
     return context
 
