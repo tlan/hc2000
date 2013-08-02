@@ -2,7 +2,7 @@ import boto
 import json
 
 import hc2002.aws.iam
-from hc2002.validation import absolute_path, one_or_more, validate, \
+from hc2002.validation import absolute_path, in_, one_or_more, validate, \
         validate_keys, validate_values
 
 _role_policy = one_or_more({
@@ -17,7 +17,7 @@ validator = {
         dict,
         validate_values([
             dict,
-            validate_keys([ 'allow', 'deny' ]),
+            validate_keys(in_('allow', 'deny')),
             validate_values(_role_policy),
         ]),
     ],

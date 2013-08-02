@@ -2,12 +2,14 @@ class Context:
     def __init__(self):
         self.scope = []
         self.errors = []
+        self.error_prefix = []
 
     def get_scope(self): return ''.join(self.scope)
+    def get_error_prefix(self): return ''.join(self.error_prefix)
 
     def error(self, message, value):
-        self.errors.append((self.get_scope(), \
-                'Expected %s, got %s' % (message, value)))
+        self.errors.append((self.get_scope(), '%sExpected %s, got %s' \
+                % (self.get_error_prefix(), message, value)))
 
     def __bool__(self):
         return len(self.errors) == 0
@@ -51,17 +53,26 @@ def tolerant_dict(dict_):
     return all_of(is_(dict), _tolerant_dict)
 
 def strict_dict(dict_):
-    return all_of(tolerant_dict(dict_), validate_keys(dict_.keys()))
+    return all_of(tolerant_dict(dict_), validate_keys(in_(dict_.keys())))
 
-def validate_keys(keys):
+def in_(*values):
+    if len(values) == 1 \
+            and not isinstance(values[0], basestring) \
+            and hasattr(values[0], '__iter__'):
+        values = values[0]
+
+    def _in_(data, context):
+        if data not in values:
+            context.error('value in %s' % values, data)
+    return _in_
+
+def validate_keys(validator):
     def _validate_keys(data, context):
         unknown_keys = []
         for k in data.iterkeys():
-            if k not in keys:
-                unknown_keys.append(k)
-        if len(unknown_keys):
-            context.error('Known keys are %s' % keys,
-                    unknown_keys)
+            context.error_prefix.append('Key error. ')
+            _validate(validator, k, context)
+            context.error_prefix.pop()
     return _validate_keys
 
 def validate_values(validator):
