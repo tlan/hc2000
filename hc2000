@@ -13,12 +13,12 @@ import yaml
 import hc2002.aws.iam
 import hc2002.config
 import hc2002.manifest
-import hc2002.resource.role
 import hc2002.resource.instance
-import hc2002.resource.loadbalancer
-import hc2002.validation
+import hc2002.resource.load_balancer
+import hc2002.resource.role
 import hc2002.transform as xf
 import hc2002.translation as xl
+import hc2002.validation
 
 def _load_definition(filename):
     try:
@@ -530,7 +530,7 @@ def _do_auto_scaling(config, definition):
             if not isinstance(lb, list):
                 lb = [ lb ]
             print '* Checking that load balancers exist:', lb
-            hc2002.resource.loadbalancer.list(lb)
+            hc2002.resource.load_balancer.list(lb)
 
         params = _translate(auto_scaling_group_mapping, definition)
         print "Auto scaling groups:", params
