@@ -462,6 +462,9 @@ def launch_action(config):
                 validate(hc2002.manifest, yaml.safe_load(entry), scope) \
                         or sys.exit(1)
 
+    validate(hc2002.resource.instance, instance, 'instance') \
+            or sys.exit(1)
+
     if 'auto-scaling-group' in instance:
         _do_auto_scaling(config, instance)
     elif 'spot-price' in instance:
@@ -470,9 +473,6 @@ def launch_action(config):
         _do_run_instance(config, instance)
 
 def _do_run_instance(config, definition):
-    validate(hc2002.resource.instance, definition, 'instance') \
-            or sys.exit(1)
-
     ec2 = hc2002.aws.ec2.get_connection()
 
     params = _translate(run_instances_mapping, definition)

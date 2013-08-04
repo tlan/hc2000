@@ -1,3 +1,5 @@
+import datetime
+
 from hc2002.validation import in_, match, one_of, one_or_more, prefix, \
         validate_keys, validate_values, tolerant_dict
 
@@ -13,6 +15,15 @@ _block_device = [
         'disposable':   bool,
     }),
 ]
+
+_scheduled_group_action = {
+    'count':        int,
+    'min-count':    int,
+    'max-count':    int,
+    'start-time':   datetime.datetime,
+    'end-time':     datetime.datetime,
+    'recurrence':   basestring,
+}
 
 _instance_dict = {
     'instance-type':        basestring,
@@ -38,7 +49,108 @@ _instance_dict = {
     'api-termination':      bool,
     'shutdown-behavior':    bool,
     'client-token':         basestring,
+
+    # Spot instances
+    'spot-price':               float,
+    'spot-request-type':        basestring,
+    'valid-from':               basestring,
+    'valid-until':              basestring,
+    'launch-group':             basestring,
+    'availability-zone-group':  basestring,
+
+    # Auto-scaling groups
+    'auto-scaling-group':           basestring,
+    'launch-configuration':         basestring,
+    'auto-scaling-cooldown':        int,
+    'auto-scaling-grace-period':    int,
+    'auto-scaling-health-check':    basestring,
+    'load-balancers':               one_or_more(basestring),
+    'termination-policies':         one_or_more(basestring),
+    'schedule':                     _scheduled_group_action,
 }
+
+_run_instance_keys = [
+    'instance-type',
+    'ebs-optimized',
+    'block-devices',
+    'image',
+    'kernel',
+    'ramdisk',
+    'min-count',
+    'max-count',
+    'count',
+    'tags',
+    'key',
+    'role',
+    'security-groups',
+    'subnet',
+    'ip-address',
+    'availability-zone',
+    'placement-group',
+    'tenancy',
+    'user-data',
+    'monitoring',
+    'api-termination',
+    'shutdown-behavior',
+    'client-token',
+]
+
+_spot_instance_keys = [
+    'instance-type',
+    'ebs-optimized',
+    'block-devices',
+    'image',
+    'kernel',
+    'ramdisk',
+    'count',
+    'key',
+    'role',
+    'security-groups',
+    'subnet',
+    'availability-zone',
+    'placement-group',
+    'user-data',
+    'monitoring',
+    'spot-price',
+    'spot-request-type',
+    'valid-from',
+    'valid-until',
+    'launch-group',
+    'availability-zone-group',
+]
+
+_launch_config_keys = [
+    'launch-configuration',
+    'instance-type',
+    'spot-price',
+    'image',
+    'kernel',
+    'ramdisk',
+    'key',
+    'role',
+    'security-groups',
+    'user-data',
+    'monitoring',
+    'ebs-optimized',
+    'block-devices',
+]
+
+_auto_scaling_group_keys = [
+    'auto-scaling-group',
+    'launch-configuration',
+    'count',
+    'min-count',
+    'max-count',
+    'subnet',
+    'availability-zone',
+    'auto-scaling-cooldown',
+    'auto-scaling-grace-period',
+    'auto-scaling-health-check',
+    'load-balancers',
+    'tags',
+    'termination-policies',
+    'schedule',
+]
 
 _resolvable_prefixes = ('image:', 'kernel:', 'key:', 'load-balancers:',
     'ramdisk:', 'security-groups:', 'spot-price:', 'subnet:')
@@ -46,8 +158,18 @@ _resolvable_prefixes = ('image:', 'kernel:', 'key:', 'load-balancers:',
 validator = [
     dict,
     tolerant_dict(_instance_dict),
-    validate_keys(one_of(
-        in_(_instance_dict.keys()),
-        prefix(_resolvable_prefixes),
-    )),
+    one_of(
+        validate_keys(one_of(
+            in_(_run_instance_keys),
+            prefix(_resolvable_prefixes),
+        )),
+        validate_keys(one_of(
+            in_(_spot_instance_keys),
+            prefix(_resolvable_prefixes),
+        )),
+        validate_keys(one_of(
+            in_(_launch_config_keys + _auto_scaling_group_keys),
+            prefix(_resolvable_prefixes),
+        )),
+    ),
 ]
