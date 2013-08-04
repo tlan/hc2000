@@ -491,9 +491,6 @@ def _do_spot_request(config, definition):
     ec2 = hc2002.aws.ec2.get_connection()
 
     params = _translate(spot_request_mapping, definition)
-    print yaml.dump(params, default_flow_style=False)
-    return
-
     print ec2.request_spot_instances(**params)
 
 scheduled_auto_scaling_action = {
