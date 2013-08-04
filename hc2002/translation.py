@@ -1,5 +1,20 @@
 import re
 
+def _translate(translator, result, value):
+    if hasattr(translator, '__iter__'):
+        for m in translator:
+            _translate(m, result, value)
+    else:
+        translator(result, value)
+
+def translate(translator, source, destination=None):
+    if destination is None: destination = {}
+
+    for key, value in source.iteritems():
+        if key in translator:
+            _translate(translator[key], destination, value)
+    return destination
+
 def if_(condition, if_true, if_false):
     def _if_(destination, value):
         if condition(value):
