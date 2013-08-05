@@ -31,9 +31,10 @@ manifest:
         region = metadata['placement']['availability-zone'][:-1]
         instance = metadata['instance-id']
 
-        ec2 = boto.ec2.connect_to_region(region)
-
         semaphore = '/var/lib/create-ami.%s' % IMAGE_NAME
+
+        def ec2():
+            return boto.ec2.connect_to_region(region)
 
         def acquire_semaphore():
             try:
@@ -53,10 +54,10 @@ manifest:
 
         if acquire_semaphore():
             print 'Creating image from instance'
-            ec2.create_image(instance, IMAGE_NAME, IMAGE_DESCRIPTION)
+            ec2().create_image(instance, IMAGE_NAME, IMAGE_DESCRIPTION)
         elif read_semaphore() == instance:
             print 'Terminating instance'
-            ec2.terminate_instances([ instance ])
+            ec2().terminate_instances([ instance ])
         else:
             print 'This AMI brought to you by hc2000'
 user-data:
