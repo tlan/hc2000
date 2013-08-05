@@ -58,8 +58,7 @@ manifest:
             print 'Terminating instance'
             ec2.terminate_instances([ instance ])
         else:
-            print 'What am I doing here?!'
-
+            print 'This AMI brought to you by hc2000'
 user-data:
     - |
         #cloud-config
