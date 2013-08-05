@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 # Terminate instance and scale group down
 
 import boto.ec2.autoscale
