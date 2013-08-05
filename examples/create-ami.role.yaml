@@ -1,0 +1,13 @@
+name: hc2000-examples-create-ami
+path: /hc2000/examples/
+
+policy:
+    create-image:
+        allow:
+          - action:     ec2:CreateImage
+            resource:   '*'
+
+    terminate-instances:
+        allow:
+          - action:     ec2:TerminateInstances
+            resource:   '*'

@@ -1,0 +1,79 @@
+instance-type: t1.micro
+image: ami-c7c0d6b3 # Amazon Linux 64-bit, EBS-backed [ EU-West-1 ]
+
+tags: { launched-by: hc2000 }
+
+key: hc2000
+security-groups: hc2000-ssh
+
+role: hc2000-examples-create-ami
+
+manifest:
+    - destination: '/opt/scripts/create-ami.py'
+      mode: 0744
+      content: |
+        #!/usr/bin/env python
+        # Create AMI and terminate upon reboot
+
+        import boto.ec2
+        import boto.utils
+        import datetime
+        import errno
+        import os
+        import sys
+
+        IMAGE_NAME = 'hc2000-examples-create-ami'
+        IMAGE_DESCRIPTION = 'Amazon Linux 2013.03.1 with Java 7.\n' \
+                '-- An image brought to you by hc2000.'
+
+        metadata = boto.utils.get_instance_metadata()
+
+        region = metadata['placement']['availability-zone'][:-1]
+        instance = metadata['instance-id']
+
+        ec2 = boto.ec2.connect_to_region(region)
+
+        def acquire_semaphore(name):
+            semaphore = '/var/lib/create-ami.%s.%s' % (IMAGE_NAME, name)
+
+            try:
+                fd = os.open(semaphore, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0400)
+            except OSError as e:
+                if e.errno != errno.EEXIST:
+                    raise
+                return False
+
+            os.write(fd, '%s\n' % datetime.datetime.now())
+            os.close(fd)
+            return True
+
+        def terminate_instance():
+            ec2.terminate_instances([ instance ])
+
+        def create_image():
+            ec2.create_image(instance, IMAGE_NAME, IMAGE_DESCRIPTION)
+
+        if acquire_semaphore('image'):
+            print 'Creating image from instance'
+            create_image()
+        elif acquire_semaphore('terminate'):
+            print 'Terminating instance'
+            terminate_instance()
+        else:
+            print 'What am I doing here?!'
+
+user-data:
+    - |
+        #cloud-config
+        packages:
+            - java-1.7.0-openjdk
+        runcmd:
+            - [ update-alternatives, --set, java, /usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java ]
+    - |
+        #upstart-job
+        console output
+        task
+
+        start on stopped rc
+
+        exec /opt/scripts/create-ami.py 2>&1 >> /var/log/create-ami.txt
