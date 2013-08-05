@@ -33,9 +33,9 @@ manifest:
 
         ec2 = boto.ec2.connect_to_region(region)
 
-        def acquire_semaphore(name):
-            semaphore = '/var/lib/create-ami.%s.%s' % (IMAGE_NAME, name)
+        semaphore = '/var/lib/create-ami.%s' % IMAGE_NAME
 
+        def acquire_semaphore():
             try:
                 fd = os.open(semaphore, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0400)
             except OSError as e:
@@ -43,15 +43,18 @@ manifest:
                     raise
                 return False
 
-            os.write(fd, '%s\n' % datetime.datetime.now())
+            os.write(fd, instance)
             os.close(fd)
             return True
 
+        def read_semaphore():
+            with open(semaphore, 'r') as f:
+                return f.read()
 
-        if acquire_semaphore('image'):
+        if acquire_semaphore():
             print 'Creating image from instance'
             ec2.create_image(instance, IMAGE_NAME, IMAGE_DESCRIPTION)
-        elif acquire_semaphore('terminate'):
+        elif read_semaphore() == instance:
             print 'Terminating instance'
             ec2.terminate_instances([ instance ])
         else:
