@@ -47,18 +47,13 @@ manifest:
             os.close(fd)
             return True
 
-        def terminate_instance():
-            ec2.terminate_instances([ instance ])
-
-        def create_image():
-            ec2.create_image(instance, IMAGE_NAME, IMAGE_DESCRIPTION)
 
         if acquire_semaphore('image'):
             print 'Creating image from instance'
-            create_image()
+            ec2.create_image(instance, IMAGE_NAME, IMAGE_DESCRIPTION)
         elif acquire_semaphore('terminate'):
             print 'Terminating instance'
-            terminate_instance()
+            ec2.terminate_instances([ instance ])
         else:
             print 'What am I doing here?!'
 
