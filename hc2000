@@ -454,13 +454,13 @@ def launch_action(config):
             or sys.exit(1)
 
     if 'auto-scaling-group' in instance:
-        _do_auto_scaling(config, instance)
+        _do_auto_scaling(instance)
     elif 'spot-price' in instance:
-        _do_spot_request(config, instance)
+        _do_spot_request(instance)
     else:
-        _do_run_instance(config, instance)
+        _do_run_instance(instance)
 
-def _do_run_instance(config, definition):
+def _do_run_instance(definition):
     ec2 = hc2002.aws.ec2.get_connection()
 
     params = xl.translate(run_instances_mapping, definition)
@@ -475,7 +475,7 @@ def _do_run_instance(config, definition):
 
     print reservation.instances
 
-def _do_spot_request(config, definition):
+def _do_spot_request(definition):
     ec2 = hc2002.aws.ec2.get_connection()
 
     params = xl.translate(spot_request_mapping, definition)
@@ -490,7 +490,7 @@ scheduled_auto_scaling_action = {
     'recurrence':   xl.set_key('Recurrence'),
 }
 
-def _do_auto_scaling(config, definition):
+def _do_auto_scaling(definition):
     autoscale = hc2002.aws.auto_scaling.get_connection()
 
     launcher = autoscale.get_all_launch_configurations(names=[ definition['launch-configuration'] ])
