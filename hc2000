@@ -410,14 +410,12 @@ def launch_action(config):
         orig_value = value
         if not value.endswith('.pp'):
             value = value + '.pp'
-        found = False
         for path in config.puppet_path:
             path = os.path.join(path, value)
             if os.path.exists(path):
                 destination['user-data'].append('file:' + path)
-                found = True
-        if not found:
-            print 'Couldn\'t find manifest for \'%s\'' % orig_value
+                return
+        print 'Couldn\'t find manifest for \'%s\'' % orig_value
 
     _user_data_extension(instance, 'puppet', xl.for_each(_include_puppet))
 
