@@ -66,7 +66,7 @@ _instance_dict = {
     'auto-scaling-health-check':    basestring,
     'load-balancers':               one_or_more(basestring),
     'termination-policies':         one_or_more(basestring),
-    'schedule':                     _scheduled_group_action,
+    'schedule':                     validate_values(_scheduled_group_action),
 }
 
 _run_instance_keys = [
