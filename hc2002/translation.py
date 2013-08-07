@@ -11,6 +11,7 @@ def translate(translator, source, destination=None):
     if destination is None: destination = {}
 
     for key, value in source.iteritems():
+        if value is None: continue
         if key in translator:
             _translate(translator[key], destination, value)
     return destination

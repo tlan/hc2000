@@ -51,6 +51,7 @@ def is_(expected):
 def tolerant_dict(dict_):
     def _tolerant_dict(data, context):
         for k, v in data.iteritems():
+            if v is None: continue
             if k in dict_:
                 context.scope.append('.%s' % k)
                 _validate(dict_[k], v, context)
