@@ -10,7 +10,6 @@ import os
 import os.path
 import sys
 import yaml
-import hc2002.aws.iam
 import hc2002.aws.ec2
 import hc2002.aws.auto_scaling
 import hc2002.config
