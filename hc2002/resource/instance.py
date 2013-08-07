@@ -152,8 +152,9 @@ _auto_scaling_group_keys = [
     'schedule',
 ]
 
-_resolvable_prefixes = ('image:', 'kernel:', 'key:', 'load-balancers:',
-    'ramdisk:', 'security-groups:', 'spot-price:', 'subnet:')
+_resolvable_prefixes = ('availability-zone:', 'image:', 'kernel:', 'key:',
+        'load-balancers:', 'ramdisk:', 'security-groups:', 'spot-price:',
+        'subnet:')
 
 validator = [
     dict,

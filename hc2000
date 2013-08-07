@@ -47,8 +47,9 @@ def _apply_mapping(mapping, result, value):
     else:
         mapping(result, value)
 
-_resolvable_prefixes = ('image:', 'kernel:', 'key:', 'load-balancers:',
-    'ramdisk:', 'security-groups:', 'spot-price:', 'subnet:')
+_resolvable_prefixes = ('availability-zone:', 'image:', 'kernel:', 'key:',
+        'load-balancers:', 'ramdisk:', 'security-groups:', 'spot-price:',
+        'subnet:')
 
 ec2_block_device_mapping = {
     'source':       xl.switch({
