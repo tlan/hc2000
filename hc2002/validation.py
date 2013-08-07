@@ -44,7 +44,7 @@ def validate(validator, data, initial_scope=None):
 def is_(expected):
     def _is_(data, context):
         if not isinstance(data, expected):
-            context.error('Expected element of type %s' % expected.__name__,
+            context.error('element of type %s' % expected.__name__,
                     data)
     return _is_
 
@@ -115,7 +115,7 @@ def at_most_one_of(*keys):
         for k in keys:
             matched += k in data
         if matched > 1:
-            context.error('At most one of %s expected' % keys, data)
+            context.error('at most one of %s' % keys, data)
     return _at_most_one_of
 
 def one_or_more(validator):
@@ -140,11 +140,11 @@ url = basestring
 
 def file_mode(data, context):
     if 0777 != data | 0777:
-        context.error("Invalid file mode", data)
+        context.error("valid file mode (mode | 0777 == 0777)", data)
 
 def match(pattern):
     regex = re.compile(pattern)
     def _match(data, context):
         if not regex.match(data):
-            context.error('Value does not match: %s' % pattern, data)
+            context.error('value matching pattern /%s/' % pattern, data)
     return _match
