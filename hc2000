@@ -490,6 +490,7 @@ scheduled_auto_scaling_action = {
 
 def _do_auto_scaling(definition):
     autoscale = hc2002.aws.auto_scaling.get_connection()
+    group_name = definition['auto-scaling-group']
 
     launcher = autoscale.get_all_launch_configurations(names=[ definition['launch-configuration'] ])
     if len(launcher) == 0:
@@ -500,7 +501,7 @@ def _do_auto_scaling(definition):
     else:
         print '=> Launch configuration already exists, skipping'
 
-    group = autoscale.get_all_groups(names=[ definition['auto-scaling-group'] ])
+    group = autoscale.get_all_groups(names=[ group_name ])
     if len(group) == 0:
         if 'load-balancers' in definition:
             lb = definition['load-balancers']
@@ -522,13 +523,20 @@ def _do_auto_scaling(definition):
     if 'schedule' in definition:
         for name, schedule in definition['schedule'].iteritems():
             params = xl.translate(scheduled_auto_scaling_action, schedule)
-            params['AutoScalingGroupName'] = definition['auto-scaling-group']
+            params['AutoScalingGroupName'] = group_name
             params['ScheduledActionName'] = name
 
             response = autoscale.make_request('PutScheduledUpdateGroupAction', params)
             if response.status != 200:
                 print 'Failed to schedule %s scaling action' % name
                 print response.read()
+
+    if 'notification' in definition:
+        notification = definition['notification']
+        if not isinstance(notification['type'], list):
+            notification['type'] = [ notification['type'] ]
+        autoscale.put_notification_configuration(group_name,
+                notification['topic'], notification['type'])
 
 def parse_args(args=None, namespace=None):
     parser = argparse.ArgumentParser(fromfile_prefix_chars='@')

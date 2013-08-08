@@ -25,6 +25,11 @@ _scheduled_group_action = {
     'recurrence':   basestring,
 }
 
+_notification_configuration = {
+    'topic':    basestring,
+    'type':     one_or_more(basestring),
+}
+
 _instance_dict = {
     'instance-type':        basestring,
     'ebs-optimized':        bool,
@@ -67,6 +72,7 @@ _instance_dict = {
     'load-balancers':               one_or_more(basestring),
     'termination-policies':         one_or_more(basestring),
     'schedule':                     validate_values(_scheduled_group_action),
+    'notification':                 _notification_configuration,
 }
 
 _run_instance_keys = [
@@ -150,6 +156,7 @@ _auto_scaling_group_keys = [
     'tags',
     'termination-policies',
     'schedule',
+    'notification',
 ]
 
 _resolvable_prefixes = ('availability-zone:', 'image:', 'kernel:', 'key:',
