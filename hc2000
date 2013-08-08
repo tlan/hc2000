@@ -266,7 +266,7 @@ def _resolve_symbolic_values(definition):
         visited = set()
         while isinstance(value, basestring) \
                 and value.startswith(prefix):
-            value = value.format(**definition)
+            value = value.format(region=config.region, **definition)
             if value in definition \
                     and value not in visited:
                 visited.add(value)
