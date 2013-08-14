@@ -16,6 +16,7 @@ import hc2002.config
 import hc2002.plugin
 import hc2002.plugin.cloud_config
 import hc2002.plugin.manifest
+import hc2002.plugin.puppet
 import hc2002.resource.instance
 import hc2002.resource.load_balancer
 import hc2002.resource.role
@@ -358,24 +359,6 @@ def create_role_action(config):
     role = _load_definition(config.role)
     hc2002.resource.role.create(role)
 
-def _user_data_extension(instance, tag, translator):
-    if tag not in instance:
-        return
-
-    handler_path = os.path.join(config.handler_path, tag + '.py')
-    with open(handler_path, 'rb') as f:
-        part_handler = f.read()
-    if not part_handler.startswith('#part-handler'):
-        part_handler = '#part-handler\n' + part_handler
-
-    if 'user-data' not in instance:
-        instance['user-data'] = []
-    elif isinstance(instance['user-data'], basestring):
-        instance['user-data'] = [ instance['user-data'] ]
-
-    instance['user-data'].append(part_handler)
-    translator(instance, instance.pop(tag))
-
 def validate(validator, data, scope=None):
     ctx = hc2002.validation.validate(validator, data, scope)
     for scope, msg in ctx.errors:
@@ -393,20 +376,6 @@ def launch_action(config):
     command_line_override('instance_count', 'count')
     command_line_override('subnet', 'subnet')
     command_line_override('availability_zone', 'availability-zone')
-
-    # FIXME: This should live as some sort of external plugin.
-    def _include_puppet(destination, value):
-        orig_value = value
-        if not value.endswith('.pp'):
-            value = value + '.pp'
-        for path in config.puppet_path:
-            path = os.path.join(path, value)
-            if os.path.exists(path):
-                destination['user-data'].append('file:' + path)
-                return
-        print 'Couldn\'t find manifest for \'%s\'' % orig_value
-
-    _user_data_extension(instance, 'puppet', xl.for_each(_include_puppet))
 
     hc2002.plugin.apply_for_resource(hc2002.resource.instance, instance)
     validate(hc2002.resource.instance, instance, 'instance') \
