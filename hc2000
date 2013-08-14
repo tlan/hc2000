@@ -13,7 +13,8 @@ import yaml
 import hc2002.aws.ec2
 import hc2002.aws.auto_scaling
 import hc2002.config
-import hc2002.manifest
+import hc2002.plugin
+import hc2002.plugin.manifest
 import hc2002.resource.instance
 import hc2002.resource.load_balancer
 import hc2002.resource.role
@@ -406,35 +407,7 @@ def launch_action(config):
 
     _user_data_extension(instance, 'puppet', xl.for_each(_include_puppet))
 
-    def _xf_manifest(value):
-        if not isinstance(value, basestring):
-            value = yaml.dump(value)
-        if not value.startswith(('file:', '#manifest\n')):
-            value = '#manifest\n' + value
-        return value
-
-    _user_data_extension(instance, 'manifest',
-            xl.for_each(xl.append_to('user-data', _xf_manifest)))
-
-    if 'user-data' in instance and \
-            isinstance(instance['user-data'], list):
-        for i, entry in enumerate(instance['user-data']):
-            if not isinstance(entry, basestring):
-                continue
-
-            scope = 'user-data[%i]' % i
-
-            #FIXME: Should either move file inlining earlier of validation
-            #       later. Should NOT read the file twice.
-            if entry.startswith('file:'):
-                scope += ':%s:' % entry[5:]
-                entry = open(entry[5:], 'rb').read()
-
-            if entry.startswith('#manifest'):
-                print "Validating manifest:\n", entry
-                validate(hc2002.manifest, yaml.safe_load(entry), scope) \
-                        or sys.exit(1)
-
+    hc2002.plugin.apply_for_resource(hc2002.resource.instance, instance)
     validate(hc2002.resource.instance, instance, 'instance') \
             or sys.exit(1)
 
