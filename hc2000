@@ -14,6 +14,7 @@ import hc2002.aws.ec2
 import hc2002.aws.auto_scaling
 import hc2002.config
 import hc2002.plugin
+import hc2002.plugin.cloud_config
 import hc2002.plugin.manifest
 import hc2002.resource.instance
 import hc2002.resource.load_balancer

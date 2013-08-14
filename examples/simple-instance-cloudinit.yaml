@@ -12,15 +12,14 @@ tags: { launched-by: hc2000 }
 key: hc2000
 security-groups: hc2000-ssh
 
-user-data: |
-    #cloud-config
+cloud-config:
     repo_additions:
-        - source: 10gen
+        - source:   10gen
           filename: 10gen.repo
-          baseurl: http://downloads-distro.mongodb.org/repo/redhat/os/x86_64
-          enabled: 1
+          baseurl:  http://downloads-distro.mongodb.org/repo/redhat/os/x86_64
+          enabled:  1
           gpgcheck: 0
 
     packages:
-      - mongo-10gen-server
-      - sysstat
+        - mongo-10gen-server
+        - sysstat

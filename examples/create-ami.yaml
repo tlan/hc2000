@@ -60,18 +60,18 @@ manifest:
             ec2().terminate_instances([ instance ])
         else:
             print 'This AMI brought to you by hc2000'
-user-data:
-    - |
-        #cloud-config
-        packages:
-            - java-1.7.0-openjdk
-        runcmd:
-            - [ update-alternatives, --set, java, /usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java ]
-    - |
-        #upstart-job
-        console output
-        task
 
-        start on stopped rc
+cloud-config:
+    packages:
+        - java-1.7.0-openjdk
+    runcmd:
+        - [ update-alternatives, --set, java, /usr/lib/jvm/jre-1.7.0-openjdk.x86_64/bin/java ]
 
-        exec /opt/scripts/create-ami.py 2>&1 >> /var/log/create-ami.txt
+user-data: |
+    #upstart-job
+    console output
+    task
+
+    start on stopped rc
+
+    exec /opt/scripts/create-ami.py 2>&1 >> /var/log/create-ami.txt
