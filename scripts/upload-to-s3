@@ -5,12 +5,6 @@ import argparse
 import boto
 import sys
 
-def error(message):
-    sys.stderr.write('%s\n' % message)
-    sys.stderr.flush()
-
-    sys.exit(1)
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Upload files to S3, under a '
             'common prefix.')
@@ -24,10 +18,11 @@ if __name__ == '__main__':
 
     for src in config.source:
         if not src.startswith(config.strip):
-            error('File missing prefix to drop: %s (%s)' % (src, config.strip))
+            raise Exception('File missing common prefix: %s (%s)'
+                    % (src, config.strip))
 
     if not config.destination.startswith('s3://'):
-        error('Unsupported destination path: %s' % config.destination)
+        raise Exception('Unsupported destination URL: %s' % config.destination)
 
     bucket_name, _, key_prefix = config.destination[5:].partition('/')
 
