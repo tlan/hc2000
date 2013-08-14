@@ -5,30 +5,29 @@ import argparse
 import boto
 import sys
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Upload files to S3, under a '
-            'common prefix.')
-    parser.add_argument('--strip', default='', help='Drop a common prefix '
-            'from source files. All sources must start with the prefix.')
-    parser.add_argument('source', nargs='+', help='Files to upload')
-    parser.add_argument('destination', help='Destination and common prefix '
-            'for all uploaded files.')
+parser = argparse.ArgumentParser(description='Upload files to S3, under a '
+        'common prefix.')
+parser.add_argument('--strip', default='', help='Drop a common prefix '
+        'from source files. All sources must start with the prefix.')
+parser.add_argument('source', nargs='+', help='Files to upload')
+parser.add_argument('destination', help='Destination and common prefix '
+        'for all uploaded files.')
 
-    config = parser.parse_args()
+config = parser.parse_args()
 
-    for src in config.source:
-        if not src.startswith(config.strip):
-            raise Exception('File missing common prefix: %s (%s)'
-                    % (src, config.strip))
+for src in config.source:
+    if not src.startswith(config.strip):
+        raise Exception('File missing common prefix: %s (%s)'
+                % (src, config.strip))
 
-    if not config.destination.startswith('s3://'):
-        raise Exception('Unsupported destination URL: %s' % config.destination)
+if not config.destination.startswith('s3://'):
+    raise Exception('Unsupported destination URL: %s' % config.destination)
 
-    bucket_name, _, key_prefix = config.destination[5:].partition('/')
+bucket_name, _, key_prefix = config.destination[5:].partition('/')
 
-    s3 = boto.connect_s3()
-    bucket = s3.get_bucket(bucket_name, validate=False)
-    for src in config.source:
-        key_suffix = src[len(config.strip):]
-        key = key_prefix + key_suffix
-        bucket.new_key(key).set_contents_from_filename(src)
+s3 = boto.connect_s3()
+bucket = s3.get_bucket(bucket_name, validate=False)
+for src in config.source:
+    key_suffix = src[len(config.strip):]
+    key = key_prefix + key_suffix
+    bucket.new_key(key).set_contents_from_filename(src)

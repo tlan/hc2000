@@ -65,21 +65,19 @@ def notify(config, status, output, trace):
     message = _prepare_message(status, output, trace)
     send_email(message=message, **config.__dict__)
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('sender')
-    parser.add_argument('subject')
-    parser.add_argument('--notify', choices=[ 'always', 'error', 'success' ], default='error')
-    parser.add_argument('--to', action='append', required=True)
-    parser.add_argument('--cc', action='append')
-    parser.add_argument('--bcc', action='append')
-    parser.add_argument('--reply-to', action='append')
+parser = argparse.ArgumentParser()
+parser.add_argument('sender')
+parser.add_argument('subject')
+parser.add_argument('--notify', choices=[ 'always', 'error', 'success' ], default='error')
+parser.add_argument('--to', action='append', required=True)
+parser.add_argument('--cc', action='append')
+parser.add_argument('--bcc', action='append')
+parser.add_argument('--reply-to', action='append')
 
-    config, args = parser.parse_known_args()
+config, args = parser.parse_known_args()
 
-    status, output, trace = check_command(args)
-    if config.notify == 'always' \
-            or status and config.notify == 'error' \
-            or not status and config.notify == 'success':
-        notify(config, status, output, trace)
-
+status, output, trace = check_command(args)
+if config.notify == 'always' \
+        or status and config.notify == 'error' \
+        or not status and config.notify == 'success':
+    notify(config, status, output, trace)
