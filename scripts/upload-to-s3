@@ -2,16 +2,66 @@
 # Upload to S3
 
 import argparse
-import boto
+import boto.s3.connection
+import os
 import sys
+import urllib2
+import yaml
 
-parser = argparse.ArgumentParser(description='Upload files to S3, under a '
-        'common prefix.')
-parser.add_argument('--strip', default='', help='Drop a common prefix '
-        'from source files. All sources must start with the prefix.')
+def get_credentials_from_file(filename):
+    with open(filename) as credentials:
+        for line in credentials:
+            k, _, v = line.partition('=')
+            k = k.strip()
+
+            if k == 'AWSAccessKeyId':
+                key = v.strip()
+            elif k == 'AWSSecretKey':
+                secret = v.strip()
+    return (key, secret, None)
+
+def get_instance_credentials():
+    url = 'http://169.254.169.254/latest/meta-data/iam/security-credentials'
+    try:
+        role = urllib2.urlopen(url).read()
+        cred = urllib2.urlopen(url + '/' + role).read()
+    except urllib2.URLError:
+        return None
+
+    cred = yaml.safe_load(cred)
+    return (cred['AccessKeyId'], cred['SecretAccessKey'], cred['Token'])
+
+def get_credentials_from_environment():
+    if 'AWS_ACCESS_KEY' in os.environ \
+            and 'AWS_SECRET_KEY' in os.environ:
+        return (os.environ.get('AWS_ACCESS_KEY'),
+                os.environ.get('AWS_SECRET_KEY'), None)
+
+    if 'AWS_CREDENTIAL_FILE' in os.environ:
+        return get_credentials_from_file(os.environ.get('AWS_CREDENTIAL_FILE'))
+
+    return None
+
+def get_credentials():
+    key, secret, token = get_credentials_from_environment() \
+            or get_instance_credentials()
+
+    return {
+        'aws_access_key_id': key,
+        'aws_secret_access_key': secret,
+        'security_token': token
+    }
+
+def get_s3_connection():
+    return boto.s3.connection.S3Connection(**get_credentials())
+
+parser = argparse.ArgumentParser(description='Upload files to S3, under a common prefix.')
+
+parser.add_argument('--strip', default='', metavar='<prefix>',
+        help='Common prefix to drop from source files. This requires that all sources start with the prefix.')
 parser.add_argument('source', nargs='+', help='Files to upload')
-parser.add_argument('destination', help='Destination and common prefix '
-        'for all uploaded files.')
+parser.add_argument('destination',
+        help='Destination and common prefix for all uploaded files.')
 
 config = parser.parse_args()
 
@@ -25,7 +75,7 @@ if not config.destination.startswith('s3://'):
 
 bucket_name, _, key_prefix = config.destination[5:].partition('/')
 
-s3 = boto.connect_s3()
+s3 = get_s3_connection()
 bucket = s3.get_bucket(bucket_name, validate=False)
 for src in config.source:
     key_suffix = src[len(config.strip):]
