@@ -356,24 +356,11 @@ def create_role_action(config):
     role = _load_definition(config.role)
     hc2002.resource.role.create(role)
 
-_handlers_path = None
-
-def _get_handlers_path():
-    global _handlers_path
-    if not _handlers_path:
-        path = os.path.dirname(__file__)
-        print "Path:", path
-        path = os.path.abspath(path)
-        print "Path:", path
-        _handlers_path = os.path.join(path, 'handlers/')
-        print "Handlers path:", _handlers_path
-    return _handlers_path
-
 def _user_data_extension(instance, tag, translator):
     if tag not in instance:
         return
 
-    handler_path = os.path.join(_get_handlers_path(), tag + '.py')
+    handler_path = os.path.join(config.handler_path, tag + '.py')
     with open(handler_path, 'rb') as f:
         part_handler = f.read()
     if not part_handler.startswith('#part-handler'):
