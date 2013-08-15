@@ -8,10 +8,7 @@ import yaml
 import hc2002.aws.ec2
 import hc2002.config
 import hc2002.plugin
-import hc2002.plugin.cloud_config
-import hc2002.plugin.manifest
-import hc2002.plugin.puppet
-import hc2002.plugin.symbolic_values
+import hc2002.plugin.default
 import hc2002.resource.instance
 import hc2002.resource.role
 
