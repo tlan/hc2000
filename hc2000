@@ -1,28 +1,18 @@
 #!/usr/bin/env python
 
 import argparse
-import boto.ec2
-import boto.ec2.autoscale
-import boto.ec2.blockdevicemapping
-import email.mime.base
-import email.mime.multipart
 import os
 import os.path
 import sys
 import yaml
 import hc2002.aws.ec2
-import hc2002.aws.auto_scaling
 import hc2002.config
 import hc2002.plugin
 import hc2002.plugin.cloud_config
 import hc2002.plugin.manifest
 import hc2002.plugin.puppet
 import hc2002.resource.instance
-import hc2002.resource.load_balancer
 import hc2002.resource.role
-import hc2002.transform as xf
-import hc2002.translation as xl
-from hc2002.validation import validate
 
 def _load_definition(filename):
     try:
@@ -42,219 +32,10 @@ def _merge_definition(definition, new):
     if new is not None:
         definition.update(new)
 
+# TODO: Turn resolvable prefixes into a plugin
 _resolvable_prefixes = ('availability-zone:', 'image:', 'kernel:', 'key:',
         'load-balancers:', 'ramdisk:', 'security-groups:', 'spot-price:',
         'subnet:')
-
-ec2_block_device_mapping = {
-    'source':       xl.switch({
-                        'no-device':            xl.set_value('no_device', True),
-                        'ephemeral[0-9]':       xl.set_key('ephemeral_name'),
-                        'snap-[a-fA-F0-9]*':    xl.set_key('snapshot_id'),
-                    }),
-    'size':         xl.set_key('size'),
-    'iops':         [
-                        xl.set_key('iops'),
-                        xl.set_value('volume_type', 'io1')
-                    ],
-    'disposable':   xl.set_key('delete_on_termination'),
-}
-
-# For BlockDeviceMappings in LaunchConfigurations, use AWS parameter names
-# directly to work around boto bug
-as_block_device_mapping = {
-    'source':       xl.switch({
-                        'ephemeral[0-9]':       xl.set_key('VirtualName'),
-                        'snap-[a-fA-F0-9]*':    xl.set_key('Ebs.SnapshotId'),
-                    }),
-    'size':         xl.set_key('Ebs.VolumeSize'),
-}
-
-def _xl_ec2_block_devices(key):
-    def _block_devices(destination, value):
-        bdm = boto.ec2.blockdevicemapping.BlockDeviceMapping()
-        for k, v in value.iteritems():
-            params = xl.translate(ec2_block_device_mapping, v,
-                    { 'delete_on_termination': True })
-            bdm[k] = boto.ec2.blockdevicemapping.BlockDeviceType(**params)
-        destination[key] = bdm
-
-    return _block_devices
-
-def _xl_as_block_devices(key):
-    def _block_devices(destination, value):
-        mappings = []
-        for k, v in value.iteritems():
-            # boto.ec2.autoscale.launchconfig.BlockDeviceMapping does not get
-            # properly propagated to API call
-            bdm = xl.translate(as_block_device_mapping, v)
-            bdm['DeviceName'] = k
-            mappings.append(bdm)
-        destination[key] = mappings
-
-    return _block_devices
-
-_magic_to_mime = {
-    '#!':               ('text', 'x-shellscript'),
-    '#cloud-boothook':  ('text', 'cloud-boothook'),
-    '#cloud-config':    ('text', 'cloud-config'),
-    '#include':         ('text', 'x-include-url'),
-    '#manifest':        ('text', 'hc2000-manifest'),
-    '#part-handler':    ('text', 'part-handler'),
-    '#puppet':          ('text', 'puppet'),
-    '#upstart-job':     ('text', 'upstart-job'),
-}
-
-def _xl_user_data(key):
-    def _user_data_file(filename):
-        with open(filename, 'rb') as f:
-            filename = os.path.basename(filename)
-            return _user_data_entry(f.read(), filename)
-
-    def _user_data_entry(value, filename=None):
-        if value.startswith('file:'):
-            return _user_data_file(value[5:])
-
-        maintype, subtype = ('application', 'octet-stream')
-        for magic, mime in _magic_to_mime.iteritems():
-            if value.startswith(magic):
-                maintype, subtype = mime
-                break
-        if maintype == 'text':
-            msg = email.mime.text.MIMEText(value, subtype)
-        else:
-            msg = email.mime.base.MIMEBase(maintype, subtype)
-            msg.set_payload(value)
-        if filename:
-            msg.add_header('Content-Disposition', 'attachment', filename=filename)
-        else:
-            msg.add_header('Content-Disposition', 'attachment')
-        return msg
-
-    def _user_data(destination, value):
-        if isinstance(value, basestring) \
-                or not hasattr(value, '__iter__'):
-            destination[key] = value
-            return
-
-        data = email.mime.multipart.MIMEMultipart()
-        for d in value:
-            data.attach(_user_data_entry(d))
-        destination[key] = data.as_string()
-
-    return _user_data
-
-# boto.ec2.autoscale.Tag unconditionally outputs optional parameters ResourceId
-# and ResourceType, requiring them to be set. _Tag works around that
-# constraint.
-class _Tag:
-    def __init__(self, key, value):
-        self.key = key
-        self.value = value
-
-    def build_params(self, params, i):
-        prefix = 'Tags.member.%d.' % i
-        params[prefix + 'Key'] = self.key
-        params[prefix + 'Value'] = self.value
-
-def _xl_as_tags(destination, value):
-    tags = []
-    for k, v in value.iteritems():
-        tags.append(_Tag(k, v))
-    destination['tags'] = tags
-
-run_instances_mapping = {
-    'instance-type':        xl.set_key('instance_type'),
-    'ebs-optimized':        xl.set_key('ebs_optimized'),
-    'block-devices':        _xl_ec2_block_devices('block_device_map'),
-    'image':                xl.set_key('image_id'),
-    'kernel':               xl.set_key('kernel_id'),
-    'ramdisk':              xl.set_key('ramdisk_id'),
-    'min-count':            xl.set_key('min_count'),
-    'max-count':            xl.set_key('max_count'),
-    'count':                xl.set_key('max_count'),
-    'tags':                 xl.ignore,
-    'key':                  xl.set_key('key_name'),
-    'role':                 xl.if_(xf.match('arn:aws:iam::'),
-                                xl.set_key('instance_profile_arn'),
-                                xl.set_key('instance_profile_name')),
-    'security-groups':      xl.for_each(
-                                xl.if_(xf.match('sg-[0-9A-Fa-f]+$'),
-                                    xl.append_to('security_group_ids'),
-                                    xl.append_to('security_groups'))),
-    'subnet':               xl.set_key('subnet_id'),
-    'ip-address':           xl.set_key('private_ip_address'),
-    'availability-zone':    xl.set_key('placement'),
-    'placement-group':      xl.set_key('placement_group'),
-    'tenancy':              xl.set_key('tenancy'),
-    'user-data':            _xl_user_data('user_data'),
-    'monitoring':           xl.set_key('monitoring_enabled'),
-    'api-termination':      xl.set_key('disable_api_termination', lambda x: not x),
-    'shutdown-behavior':    xl.set_key('instance_initiated_shutdown_behavior'),
-    'client-token':         xl.set_key('client_token'),
-}
-
-spot_request_mapping = run_instances_mapping.copy()
-# RunInstance arguments not supported in SpotRequests
-for key in [ 'min-count', 'max-count', 'tags', 'ip-address', 'tenancy',
-        'api-termination', 'shutdown-behavior', 'client-token' ]:
-    del spot_request_mapping[key]
-# Configuration specific to SpotRequests
-spot_request_mapping.update({
-    'spot-price':               xl.set_key('price'),
-    'spot-request-type':        xl.set_key('type'),
-    'valid-from':               xl.set_key('valid_from'),
-    'valid-until':              xl.set_key('valid_until'),
-    'launch-group':             xl.set_key('launch_group'),
-    'availability-zone-group':  xl.set_key('availability_zone_group'),
-})
-
-launch_configuration_mapping = {
-    'launch-configuration':     xl.set_key('name'),
-    'instance-type':            xl.set_key('instance_type'),
-    'spot-price':               xl.set_key('spot_price'),
-    'image':                    xl.set_key('image_id'),
-    'kernel':                   xl.set_key('kern_id'),
-    'ramdisk':                  xl.set_key('ramdisk_id'),
-    'key':                      xl.set_key('key_name'),
-    'role':                     xl.set_key('instance_profile_name'),
-    'security-groups':          xl.for_each(xl.append_to('security_groups')),
-    'user-data':                _xl_user_data('user_data'),
-    'monitoring':               xl.set_key('instance_monitoring'),
-    'ebs-optimized':            xl.set_key('ebs_optimized'),
-    'block-devices':            _xl_as_block_devices('block_device_mappings'),
-}
-
-auto_scaling_group_mapping = {
-    'auto-scaling-group':           xl.set_key('name'),
-    'launch-configuration':         xl.set_key('launch_config'),
-    'count':                        xl.set_key('desired_capacity'),
-    'min-count':                    xl.set_key('min_size'),
-    'max-count':                    xl.set_key('max_size'),
-    'subnet':                       xl.join('vpc_zone_identifier'),
-    'availability-zone':            xl.for_each(xl.append_to('availability_zones')),
-    'auto-scaling-cooldown':        xl.set_key('default_cooldown'),
-    'auto-scaling-grace-period':    xl.set_key('health_check_period'),
-    'auto-scaling-health-check':    xl.set_key('health_check_type'),
-    'load-balancers':               xl.for_each(xl.append_to('load_balancers')),
-    'tags':                         _xl_as_tags,
-    'termination-policies':         xl.for_each(xl.append_to('termination_policies')),
-    'schedule':                     xl.ignore,
-}
-
-# Launch Configurations and Auto-Scaling Groups are meant to share
-# configuration, so have them ignore each other's keys.
-launch_configuration_keys = launch_configuration_mapping.keys()
-auto_scaling_group_keys = auto_scaling_group_mapping.keys()
-
-for key in auto_scaling_group_keys:
-    if key not in launch_configuration_mapping:
-        launch_configuration_mapping[key] = xl.ignore
-for key in launch_configuration_keys:
-    if key not in auto_scaling_group_mapping:
-        auto_scaling_group_mapping[key] = xl.ignore
-
-    # TODO: NetworkInterface
 
 def _resolve_symbolic_values(definition):
     def _resolve_symbol(value):
@@ -364,94 +145,7 @@ def launch_action(config):
     command_line_override('availability_zone', 'availability-zone')
 
     hc2002.plugin.apply_for_resource(hc2002.resource.instance, instance)
-    validate(hc2002.resource.instance, instance, 'instance')
-
-    if 'auto-scaling-group' in instance:
-        _do_auto_scaling(instance)
-    elif 'spot-price' in instance:
-        _do_spot_request(instance)
-    else:
-        _do_run_instance(instance)
-
-def _do_run_instance(definition):
-    ec2 = hc2002.aws.ec2.get_connection()
-
-    params = xl.translate(run_instances_mapping, definition)
-    reservation = ec2.run_instances(**params)
-
-    print reservation
-
-    if 'tags' in definition:
-        ec2.create_tags(
-                [ instance.id for instance in reservation.instances ],
-                definition['tags'])
-
-    print reservation.instances
-
-def _do_spot_request(definition):
-    ec2 = hc2002.aws.ec2.get_connection()
-
-    params = xl.translate(spot_request_mapping, definition)
-    print ec2.request_spot_instances(**params)
-
-scheduled_auto_scaling_action = {
-    'count':        xl.set_key('DesiredCapacity'),
-    'min-count':    xl.set_key('MinSize'),
-    'max-count':    xl.set_key('MaxSize'),
-    'start-time':   xl.set_key('StartTime'),
-    'end-time':     xl.set_key('EndTime'),
-    'recurrence':   xl.set_key('Recurrence'),
-}
-
-def _do_auto_scaling(definition):
-    autoscale = hc2002.aws.auto_scaling.get_connection()
-    group_name = definition['auto-scaling-group']
-
-    launcher = autoscale.get_all_launch_configurations(names=[ definition['launch-configuration'] ])
-    if len(launcher) == 0:
-        params = xl.translate(launch_configuration_mapping, definition)
-        print "Launch configuration:", params
-        launcher = boto.ec2.autoscale.launchconfig.LaunchConfiguration(autoscale, **params)
-        print autoscale.create_launch_configuration(launcher)
-    else:
-        print '=> Launch configuration already exists, skipping'
-
-    group = autoscale.get_all_groups(names=[ group_name ])
-    if len(group) == 0:
-        if 'load-balancers' in definition:
-            lb = definition['load-balancers']
-            if not isinstance(lb, list):
-                lb = [ lb ]
-            print '* Checking that load balancers exist:', lb
-            hc2002.resource.load_balancer.list(lb)
-
-        params = xl.translate(auto_scaling_group_mapping, definition)
-        print "Auto scaling groups:", params
-        group = boto.ec2.autoscale.group.AutoScalingGroup(autoscale, **params)
-        print autoscale.create_auto_scaling_group(group)
-    else:
-        print '=> Auto-scaling group already exists, skipping'
-
-    # TODO: Handle load balancers
-    # TODO: Handle updates to both launch configuration and group
-
-    if 'schedule' in definition:
-        for name, schedule in definition['schedule'].iteritems():
-            params = xl.translate(scheduled_auto_scaling_action, schedule)
-            params['AutoScalingGroupName'] = group_name
-            params['ScheduledActionName'] = name
-
-            response = autoscale.make_request('PutScheduledUpdateGroupAction', params)
-            if response.status != 200:
-                print 'Failed to schedule %s scaling action' % name
-                print response.read()
-
-    if 'notification' in definition:
-        notification = definition['notification']
-        if not isinstance(notification['type'], list):
-            notification['type'] = [ notification['type'] ]
-        autoscale.put_notification_configuration(group_name,
-                notification['topic'], notification['type'])
+    print hc2002.resource.instance.launch(instance)
 
 def parse_args(args=None, namespace=None):
     parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
