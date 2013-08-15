@@ -42,14 +42,6 @@ def _merge_definition(definition, new):
     if new is not None:
         definition.update(new)
 
-# xl for translate, xf for transform.
-def _apply_mapping(mapping, result, value):
-    if hasattr(mapping, '__iter__'):
-        for m in mapping:
-            _apply_mapping(m, result, value)
-    else:
-        mapping(result, value)
-
 _resolvable_prefixes = ('availability-zone:', 'image:', 'kernel:', 'key:',
         'load-balancers:', 'ramdisk:', 'security-groups:', 'spot-price:',
         'subnet:')
