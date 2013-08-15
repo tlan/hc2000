@@ -318,7 +318,6 @@ _launch_instance_mapping = {
     'min-count':            xl.set_key('min_count'),
     'max-count':            xl.set_key('max_count'),
     'count':                xl.set_key('max_count'),
-    'tags':                 xl.ignore,
     'key':                  xl.set_key('key_name'),
     'role':                 xl.if_(xf.match('arn:aws:iam::'),
                                 xl.set_key('instance_profile_arn'),
@@ -341,7 +340,7 @@ _launch_instance_mapping = {
 
 _launch_spot_instance_mapping = _launch_instance_mapping.copy()
 # RunInstance arguments not supported in SpotRequests
-for key in [ 'min-count', 'max-count', 'tags', 'ip-address', 'tenancy',
+for key in [ 'min-count', 'max-count', 'ip-address', 'tenancy',
         'api-termination', 'shutdown-behavior', 'client-token' ]:
     del _launch_spot_instance_mapping[key]
 # Configuration specific to SpotRequests
@@ -384,20 +383,7 @@ _create_auto_scaling_group_mapping = {
     'load-balancers':               xl.for_each(xl.append_to('load_balancers')),
     'tags':                         _xl_as_tags,
     'termination-policies':         xl.for_each(xl.append_to('termination_policies')),
-    'schedule':                     xl.ignore,
 }
-
-# Launch Configurations and Auto-Scaling Groups are meant to share
-# configuration, so have them ignore each other's keys.
-_launch_configuration_keys = _create_launch_configuration_mapping.keys()
-_auto_scaling_group_keys = _create_auto_scaling_group_mapping.keys()
-
-for key in _auto_scaling_group_keys:
-    if key not in _create_launch_configuration_mapping:
-        _create_launch_configuration_mapping[key] = xl.ignore
-for key in _launch_configuration_keys:
-    if key not in _create_auto_scaling_group_mapping:
-        _create_auto_scaling_group_mapping[key] = xl.ignore
 
 # TODO: NetworkInterface
 
