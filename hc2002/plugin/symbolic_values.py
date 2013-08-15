@@ -1,4 +1,5 @@
 import hc2002.plugin as plugin
+import hc2002.config as config
 
 plugin.register_for_resource(__name__, 'hc2002.resource.instance')
 
