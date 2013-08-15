@@ -11,6 +11,7 @@ import hc2002.plugin
 import hc2002.plugin.cloud_config
 import hc2002.plugin.manifest
 import hc2002.plugin.puppet
+import hc2002.plugin.symbolic_values
 import hc2002.resource.instance
 import hc2002.resource.role
 
@@ -32,33 +33,6 @@ def _merge_definition(definition, new):
     if new is not None:
         definition.update(new)
 
-# TODO: Turn resolvable prefixes into a plugin
-_resolvable_prefixes = ('availability-zone:', 'image:', 'kernel:', 'key:',
-        'load-balancers:', 'ramdisk:', 'security-groups:', 'spot-price:',
-        'subnet:')
-
-def _resolve_symbolic_values(definition):
-    def _resolve_symbol(value):
-        visited = set()
-        while isinstance(value, basestring) \
-                and value.startswith(prefix):
-            value = value.format(region=config.region, **definition)
-            if value in definition \
-                    and value not in visited:
-                visited.add(value)
-                value = definition[value]
-        return value
-
-    for prefix in _resolvable_prefixes:
-        key = prefix[:-1]
-        if key not in definition:
-            continue
-
-        if isinstance(definition[key], basestring):
-            definition[key] = _resolve_symbol(definition[key])
-        elif isinstance(definition[key], list):
-            definition[key] = [ _resolve_symbol(v) for v in definition[key] ]
-
 def load_instance_definition(config):
     instance = {}
     for path in config.instance_path:
@@ -67,7 +41,6 @@ def load_instance_definition(config):
                 _load_definition(os.path.join(path, '~default~')))
         _merge_definition(instance,
                 _load_definition(os.path.join(path, config.instance)))
-    _resolve_symbolic_values(instance)
     return instance
 
 class BootstrapActor:

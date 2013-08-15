@@ -167,26 +167,13 @@ _auto_scaling_group_keys = [
     'notification',
 ]
 
-_resolvable_prefixes = ('availability-zone:', 'image:', 'kernel:', 'key:',
-        'load-balancers:', 'ramdisk:', 'security-groups:', 'spot-price:',
-        'subnet:')
-
 validator = [
     dict,
     tolerant_dict(_instance_dict),
     one_of(
-        validate_keys(one_of(
-            in_(_run_instance_keys),
-            prefix(_resolvable_prefixes),
-        )),
-        validate_keys(one_of(
-            in_(_spot_instance_keys),
-            prefix(_resolvable_prefixes),
-        )),
-        validate_keys(one_of(
-            in_(_launch_config_keys + _auto_scaling_group_keys),
-            prefix(_resolvable_prefixes),
-        )),
+        validate_keys(in_(_run_instance_keys)),
+        validate_keys(in_(_spot_instance_keys)),
+        validate_keys(in_(_launch_config_keys + _auto_scaling_group_keys)),
     ),
 ]
 
