@@ -8,11 +8,15 @@ def _resolve(resource):
 def register_for_resource(plugin, resource):
     resource = _resolve(resource)
 
+    # TODO: There isn't really a need for plugin lists to live in the resource
+    # namespace, they could be maintained in this module.
     if not hasattr(resource, 'plugins'):
         resource.plugins = []
     resource.plugins.insert(0, plugin)
 
 def apply_for_resource(resource, data):
+    resource = _resolve(resource)
+
     if not hasattr(resource, 'plugins'):
         return
 
