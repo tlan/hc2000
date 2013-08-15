@@ -22,7 +22,7 @@ import hc2002.resource.load_balancer
 import hc2002.resource.role
 import hc2002.transform as xf
 import hc2002.translation as xl
-import hc2002.validation
+from hc2002.validation import validate
 
 def _load_definition(filename):
     try:
@@ -359,12 +359,6 @@ def create_role_action(config):
     role = _load_definition(config.role)
     hc2002.resource.role.create(role)
 
-def validate(validator, data, scope=None):
-    ctx = hc2002.validation.validate(validator, data, scope)
-    for scope, msg in ctx.errors:
-        sys.stderr.write('%s: %s\n' % (scope, msg))
-    return len(ctx.errors) == 0
-
 def launch_action(config):
     instance = load_instance_definition(config)
 
@@ -378,8 +372,7 @@ def launch_action(config):
     command_line_override('availability_zone', 'availability-zone')
 
     hc2002.plugin.apply_for_resource(hc2002.resource.instance, instance)
-    validate(hc2002.resource.instance, instance, 'instance') \
-            or sys.exit(1)
+    validate(hc2002.resource.instance, instance, 'instance')
 
     if 'auto-scaling-group' in instance:
         _do_auto_scaling(instance)

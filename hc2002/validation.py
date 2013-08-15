@@ -36,10 +36,16 @@ def as_validator(validator):
 def _validate(validator, data, context):
     as_validator(validator)(data, context)
 
+class ValidationError(Exception):
+    pass
+
 def validate(validator, data, initial_scope=None):
     context = Context(initial_scope)
     _validate(validator, data, context)
-    return context
+
+    if len(context.errors):
+        raise ValidationError('\n'.join([ '%s: %s\n' % (scope, msg) \
+                for scope, msg in context.errors ]))
 
 def is_(expected):
     def _is_(data, context):
