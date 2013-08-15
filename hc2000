@@ -7,7 +7,6 @@ import sys
 import yaml
 import hc2002.aws.ec2
 import hc2002.config
-import hc2002.plugin
 import hc2002.plugin.default
 import hc2002.resource.instance
 import hc2002.resource.role
@@ -114,7 +113,6 @@ def launch_action(config):
     command_line_override('subnet', 'subnet')
     command_line_override('availability_zone', 'availability-zone')
 
-    hc2002.plugin.apply_for_resource(hc2002.resource.instance, instance)
     print hc2002.resource.instance.launch(instance)
 
 def parse_args(args=None, namespace=None):

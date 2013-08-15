@@ -5,6 +5,7 @@ import email.mime.multipart
 
 import hc2002.aws.auto_scaling
 import hc2002.aws.ec2
+import hc2002.plugin
 import hc2002.resource.load_balancer
 import hc2002.transform as xf
 import hc2002.translation as xl
@@ -466,6 +467,7 @@ def _launch_instance(instance):
     return reservation
 
 def launch(instance):
+    hc2002.plugin.apply_for_resource(__name__, instance)
     validate(validator, instance)
 
     if 'auto-scaling-group' in instance:
