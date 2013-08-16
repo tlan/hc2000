@@ -57,8 +57,7 @@ def _validate_manifests(instance):
 
         if entry.startswith('#manifest\n'):
             print "Validating manifest:\n", entry
-            validate(hc2002.manifest, yaml.safe_load(entry), scope) \
-                    or sys.exit(1)
+            validate(hc2002.manifest, yaml.safe_load(entry), scope)
 
 def apply(instance):
     _process_manifest_tag(instance)
