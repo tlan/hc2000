@@ -79,12 +79,8 @@ def _create_instance_profile(instance_profile, path='/', role=None):
                 ['instance_profile'] \
                 ['roles']
         if 'member' in profile_roles:
-            if profile_roles['member']['role_name'] == role:
-                return
             iam.remove_role_from_instance_profile(instance_profile,
                     profile_roles['member']['role_name'])
-
-    iam.add_role_to_instance_profile(instance_profile, role)
 
 def _set_role_policy(role, policy):
     """Sets or resets policies associated with an IAM role."""
@@ -111,10 +107,13 @@ def create(role):
 
     validate(validator, role)
 
+    _create_instance_profile(role['name'], role['path'])
     _create_role(role['name'], role['path']) \
             or _delete_role_policies(role['name'])
-    _create_instance_profile(role['name'], role['path'])
     _set_role_policy(role['name'], role['policy'])
+
+    # That's instance profile, role:
+    iam.add_role_to_instance_profile(role['name'], role['name'])
 
 def delete(name):
     _setup_iam_connection()
