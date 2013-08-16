@@ -50,6 +50,7 @@ def _create_role(role, path='/'):
     """
     try:
         iam.create_role(role, path=path)
+        return True
     except boto.exception.BotoServerError as err:
         if err.status != 409:
             raise
@@ -100,16 +101,9 @@ def _list_role_policies(role):
         for name in result['policy_names']:
             yield name
 
-def _delete_legacy_policies(role, policy):
-    """Deletes from an IAM role those policies that are not present in the
-    policy mapping passed as argument.
-    """
-    legacy_policies = []
+def _delete_role_policies(role):
+    """Deletes all policies from an IAM role."""
     for policy_name in _list_role_policies(role):
-        if policy_name not in policy:
-            legacy_policies.append(policy_name)
-
-    for policy in legacy_policies:
         iam.delete_role_policy(role, name)
 
 def create(role):
@@ -117,16 +111,15 @@ def create(role):
 
     validate(validator, role)
 
-    _create_role(role['name'], role['path'])
+    _create_role(role['name'], role['path']) \
+            or _delete_role_policies(role['name'])
     _create_instance_profile(role['name'], role['path'])
     _set_role_policy(role['name'], role['policy'])
-    _delete_legacy_policies(role['name'], role['policy'])
 
 def delete(name):
     _setup_iam_connection()
 
     iam.remove_role_from_instance_profile(name, name)
     iam.delete_instance_profile(name)
-    for policy in _list_role_policies(name):
-        iam.delete_role_policy(name, policy)
+    _delete_role_policies(name)
     iam.delete_role(name)
