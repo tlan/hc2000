@@ -49,11 +49,10 @@ def _create_role(role, path='/'):
     otherwise.
     """
     try:
-        iam.get_role(role)
-    except boto.exception.BotoServerError as err:
-        if err.status != 404:
-            raise
         iam.create_role(role, path=path)
+    except boto.exception.BotoServerError as err:
+        if err.status != 409:
+            raise
 
 def _create_instance_profile(instance_profile, path='/', role=None):
     """Creates an IAM instance profile, if one doesn't exist with the same
@@ -68,20 +67,21 @@ def _create_instance_profile(instance_profile, path='/', role=None):
 
     profile_roles = {}
     try:
+        iam.create_instance_profile(instance_profile, path=path)
+    except boto.exception.BotoServerError as err:
+        if err.status != 409:
+            raise
+
         profile_roles = iam.get_instance_profile(instance_profile) \
                 ['get_instance_profile_response'] \
                 ['get_instance_profile_result'] \
                 ['instance_profile'] \
                 ['roles']
-    except boto.exception.BotoServerError as err:
-        if err.status != 404:
-            raise
-        iam.create_instance_profile(instance_profile, path=path)
+        if 'member' in profile_roles:
+            if profile_roles['member']['role_name'] == role:
+                return
+            iam.remove_role_from_instance_profile(instance_profile, role)
 
-    if 'member' in profile_roles:
-        if profile_roles['member']['role_name'] == role:
-            return
-        iam.remove_role_from_instance_profile(instance_profile, role)
     iam.add_role_to_instance_profile(instance_profile, role)
 
 def _set_role_policy(role, policy):
