@@ -80,7 +80,8 @@ def _create_instance_profile(instance_profile, path='/', role=None):
         if 'member' in profile_roles:
             if profile_roles['member']['role_name'] == role:
                 return
-            iam.remove_role_from_instance_profile(instance_profile, role)
+            iam.remove_role_from_instance_profile(instance_profile,
+                    profile_roles['member']['role_name'])
 
     iam.add_role_to_instance_profile(instance_profile, role)
 
