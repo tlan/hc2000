@@ -2,6 +2,7 @@ import boto.ec2.blockdevicemapping
 import datetime
 import email.mime.base
 import email.mime.multipart
+import os
 
 import hc2002.aws.auto_scaling
 import hc2002.aws.ec2
