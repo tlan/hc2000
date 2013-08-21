@@ -1,8 +1,11 @@
 import boto.ec2.blockdevicemapping
+import boto.exception
 import datetime
 import email.mime.base
 import email.mime.multipart
 import os
+import sys
+import time
 
 import hc2002.aws.auto_scaling
 import hc2002.aws.ec2
@@ -393,6 +396,33 @@ _scheduled_auto_scaling_action = {
     'recurrence':   xl.set_key('Recurrence'),
 }
 
+def _try_and_retry(message, operation, condition, retries=5):
+    sys.stdout.write(message)
+    sys.stdout.flush()
+
+    result = None
+    while True:
+        try:
+            result = operation()
+            break
+        except boto.exception.BotoServerError as err:
+            retries -= 1
+            if not retries \
+                    or not condition(err):
+                sys.stdout.write('\n')
+                raise
+
+            # Let the user know we're still here
+            sys.stdout.write('.')
+            sys.stdout.flush()
+
+            # Sleep on it
+            time.sleep(5)
+
+    sys.stdout.write('\n')
+    sys.stdout.flush()
+    return result
+
 def _launch_auto_scaling_group(instance):
     _setup_auto_scaling_connection()
 
@@ -404,7 +434,10 @@ def _launch_auto_scaling_group(instance):
         params = xl.translate(_create_launch_configuration_mapping, instance)
         launcher = boto.ec2.autoscale.launchconfig.LaunchConfiguration(
                 auto_scaling, **params)
-        auto_scaling.create_launch_configuration(launcher)
+        _try_and_retry("* Creating launch configuration",
+                lambda: auto_scaling.create_launch_configuration(launcher),
+                lambda err: err.status == 400 and err.error_message.startswith(
+                        'Invalid IamInstanceProfile: '))
     else:
         print '=> Launch configuration already exists, skipping'
 
@@ -453,17 +486,26 @@ def _launch_spot_instance(instance):
     _setup_ec2_connection()
 
     params = xl.translate(_launch_spot_instance_mapping, instance)
-    return ec2.request_spot_instances(**params)
+    return _try_and_retry("* Creating spot instance request",
+            lambda: ec2.request_spot_instances(**params),
+            lambda err: err.status == 400 and err.error_message.endswith(
+                'Invalid IAM Instance Profile name'))
 
 def _launch_instance(instance):
     _setup_ec2_connection()
 
     params = xl.translate(_launch_instance_mapping, instance)
-    reservation = ec2.run_instances(**params)
+    reservation = _try_and_retry("* Launching instances",
+            lambda: ec2.run_instances(**params),
+            lambda err: err.status == 400 and err.error_message.endswith(
+                'Invalid IAM Instance Profile name'))
 
     if 'tags' in instance:
         instances = [ inst.id for inst in reservation.instances ]
-        ec2.create_tags(instances, instance['tags'])
+        _try_and_retry("* Adding tags to instance(s)",
+                lambda: ec2.create_tags(instances, instance['tags']),
+                lambda err: err.status == 400
+                        and err.error_code == 'InvalidInstanceID.NotFound')
 
     return reservation
 
