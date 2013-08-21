@@ -100,7 +100,7 @@ def _list_role_policies(role):
 def _delete_role_policies(role):
     """Deletes all policies from an IAM role."""
     for policy_name in _list_role_policies(role):
-        iam.delete_role_policy(role, name)
+        iam.delete_role_policy(role, policy_name)
 
 def create(role):
     _setup_iam_connection()
