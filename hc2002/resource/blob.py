@@ -1,3 +1,4 @@
+import boto.exception
 import hc2002.aws.s3
 
 def _setup_s3_connection():
@@ -28,10 +29,16 @@ def get(url, blob=None):
     _setup_s3_connection()
 
     key = _get_key(url)
-    if blob is None:
-        return key.get_contents_as_string()
-    else:
-        return key.get_contents_to_file(blob)
+    try:
+        if blob is None:
+            return key.get_contents_as_string()
+        else:
+            return key.get_contents_to_file(blob)
+    except boto.exception.BotoServerError as err:
+        if err.status != 404:
+            raise
+
+    return None
 
 def list(url):
     _setup_s3_connection()
