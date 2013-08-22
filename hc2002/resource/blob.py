@@ -15,14 +15,14 @@ def _get_key(url):
     bucket, key = _split_url(url)
     return s3.get_bucket(bucket, validate=False).new_key(key)
 
-def put(url, blob):
+def put(url, blob, replace=True):
     _setup_s3_connection()
 
     key = _get_key(url)
     if isinstance(blob, basestring):
-        return key.set_contents_from_string(blob)
+        return key.set_contents_from_string(blob, replace=replace)
     else:
-        return key.set_contents_from_file(blob)
+        return key.set_contents_from_file(blob, replace=replace)
 
 def get(url, blob=None):
     _setup_s3_connection()
