@@ -417,7 +417,7 @@ def _try_and_retry(message, operation, condition, retries=5):
             sys.stdout.flush()
 
             # Sleep on it
-            time.sleep(5)
+            time.sleep(10)
 
     sys.stdout.write('\n')
     sys.stdout.flush()
