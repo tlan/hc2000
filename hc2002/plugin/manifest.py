@@ -1,6 +1,7 @@
 import hc2002.config as config
 import hc2002.manifest
 import hc2002.plugin as plugin
+import hc2002.plugin.user_data
 from hc2002.validation import validate
 import os.path
 import yaml

@@ -1,9 +1,6 @@
 import boto.ec2.blockdevicemapping
 import boto.exception
 import datetime
-import email.mime.base
-import email.mime.multipart
-import os
 import sys
 import time
 
@@ -62,7 +59,7 @@ _instance_dict = {
     'availability-zone':    one_or_more(basestring),
     'placement-group':      basestring,
     'tenancy':              basestring,
-    'user-data':            one_or_more(basestring),
+    'user-data':            basestring,
     'monitoring':           bool,
     'api-termination':      bool,
     'shutdown-behavior':    bool,
@@ -230,57 +227,6 @@ def _xl_as_block_devices(key):
 
     return _block_devices
 
-# TODO: Move user-data processing to its own plugin
-_magic_to_mime = {
-    '#!':               ('text', 'x-shellscript'),
-    '#cloud-boothook':  ('text', 'cloud-boothook'),
-    '#cloud-config':    ('text', 'cloud-config'),
-    '#include':         ('text', 'x-include-url'),
-    '#manifest':        ('text', 'hc2000-manifest'),
-    '#part-handler':    ('text', 'part-handler'),
-    '#puppet':          ('text', 'puppet'),
-    '#upstart-job':     ('text', 'upstart-job'),
-}
-
-def _xl_user_data(key):
-    def _user_data_file(filename):
-        with open(filename, 'rb') as f:
-            filename = os.path.basename(filename)
-            return _user_data_entry(f.read(), filename)
-
-    def _user_data_entry(value, filename=None):
-        if value.startswith('file:'):
-            return _user_data_file(value[5:])
-
-        maintype, subtype = ('application', 'octet-stream')
-        for magic, mime in _magic_to_mime.iteritems():
-            if value.startswith(magic):
-                maintype, subtype = mime
-                break
-        if maintype == 'text':
-            msg = email.mime.text.MIMEText(value, subtype)
-        else:
-            msg = email.mime.base.MIMEBase(maintype, subtype)
-            msg.set_payload(value)
-        if filename:
-            msg.add_header('Content-Disposition', 'attachment', filename=filename)
-        else:
-            msg.add_header('Content-Disposition', 'attachment')
-        return msg
-
-    def _user_data(destination, value):
-        if isinstance(value, basestring) \
-                or not hasattr(value, '__iter__'):
-            destination[key] = value
-            return
-
-        data = email.mime.multipart.MIMEMultipart()
-        for d in value:
-            data.attach(_user_data_entry(d))
-        destination[key] = data.as_string()
-
-    return _user_data
-
 # boto.ec2.autoscale.Tag unconditionally outputs optional parameters ResourceId
 # and ResourceType, requiring them to be set. _Tag works around that
 # constraint.
@@ -323,7 +269,7 @@ _launch_instance_mapping = {
     'availability-zone':    xl.set_key('placement'),
     'placement-group':      xl.set_key('placement_group'),
     'tenancy':              xl.set_key('tenancy'),
-    'user-data':            _xl_user_data('user_data'),
+    'user-data':            xl.set_key('user_data'),
     'monitoring':           xl.set_key('monitoring_enabled'),
     'api-termination':      xl.set_key('disable_api_termination', lambda x: not x),
     'shutdown-behavior':    xl.set_key('instance_initiated_shutdown_behavior'),
@@ -355,7 +301,7 @@ _create_launch_configuration_mapping = {
     'key':                      xl.set_key('key_name'),
     'role':                     xl.set_key('instance_profile_name'),
     'security-groups':          xl.for_each(xl.append_to('security_groups')),
-    'user-data':                _xl_user_data('user_data'),
+    'user-data':                xl.set_key('user_data'),
     'monitoring':               xl.set_key('instance_monitoring'),
     'ebs-optimized':            xl.set_key('ebs_optimized'),
     'block-devices':            _xl_as_block_devices('block_device_mappings'),

@@ -1,4 +1,5 @@
 import hc2002.plugin as plugin
+import hc2002.plugin.user_data
 import yaml
 
 plugin.register_for_resource(__name__, 'hc2002.resource.instance')

@@ -1,6 +1,7 @@
 import hc2002.config as config
 import hc2002.plugin as plugin
 import hc2002.plugin.cloud_config
+import hc2002.plugin.user_data
 import os.path
 
 plugin.register_for_resource(__name__, 'hc2002.resource.instance')
