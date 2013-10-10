@@ -8,6 +8,7 @@ from hc2002.validation import absolute_path, in_, one_or_more, validate, \
 _role_policy = one_or_more({
     'action': one_or_more(basestring),
     'resource': one_or_more(basestring),
+    'condition': dict,
 })
 
 validator = {
@@ -39,6 +40,8 @@ def _translate_role_policy(policy):
                 'Action': s['action'],
                 'Resource': s['resource'],
             }
+            if 'condition' in s:
+                statement['Condition'] = s['condition']
             policy_statements.append(statement)
     return json.dumps({ 'Statement': policy_statements })
 
