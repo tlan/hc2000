@@ -459,9 +459,11 @@ def launch(instance):
     hc2002.plugin.apply_for_resource(__name__, instance)
     validate(validator, instance)
 
-    if 'auto-scaling-group' in instance:
+    if 'auto-scaling-group' in instance \
+            and instance['auto-scaling-group']:
         return _launch_auto_scaling_group(instance)
-    elif 'spot-price' in instance:
+    elif 'spot-price' in instance \
+            and instance['spot-price']:
         return _launch_spot_instance(instance)
     else:
         return _launch_instance(instance)
