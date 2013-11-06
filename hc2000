@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import logging
 import os
 import os.path
 import sys
@@ -118,6 +119,8 @@ def launch_action(config):
 def parse_args(args=None, namespace=None):
     parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
 
+    parser.add_argument('--verbose', '-v', action='count')
+
     parser.add_argument('-O', '--aws-access-key', metavar='<key>',
             help='AWS Access Key ID. Defaults to AWS_ACCESS_KEY environment '
             'variable, if set.')
@@ -185,7 +188,20 @@ def set_default_config(config):
     if config.puppet_path is None:
         config.puppet_path = [ '.' ]
 
+def setup_logging(config):
+    if not config.verbose:
+        return
+
+    if config.verbose >= 3:
+        logging.basicConfig(level=logging.DEBUG)
+    elif config.verbose == 2:
+        logging.basicConfig(level=logging.INFO)
+    else:
+        logging.basicConfig(level=logging.WARNING)
+
 if __name__ == '__main__':
     config = parse_args(namespace=hc2002.config)
+
+    setup_logging(config)
     set_default_config(config)
     config.actor(config)
