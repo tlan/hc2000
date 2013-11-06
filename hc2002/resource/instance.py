@@ -62,7 +62,9 @@ _instance_dict = {
     'user-data':            basestring,
     'monitoring':           bool,
     'api-termination':      bool,
-    'shutdown-behavior':    bool,
+    'shutdown-behavior':    one_of(
+                                match('stop'),
+                                match('terminate')),
     'client-token':         basestring,
 
     # Spot instances
