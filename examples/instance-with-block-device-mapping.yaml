@@ -5,7 +5,7 @@
 instance-type:      m1.large
 spot-price:         0.26
 
-image:              ami-c7c0d6b3 # Amazon Linux 64-bit, EBS-backed [ EU-West-1 ]
+image:              { owner: amazon, name: "amzn-ami-pv-2013.03.1.x86_64-ebs" }
 
 # key and security-group must refer to an existing Key Pair and Security
 # Group(s) in AWS. They can be created through AWS management console.

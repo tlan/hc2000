@@ -1,5 +1,5 @@
 instance-type: t1.micro
-image: ami-c7c0d6b3 # Amazon Linux 64-bit, EBS-backed [ EU-West-1 ]
+image: { owner: amazon, name: "amzn-ami-pv-2013.03.1.x86_64-ebs" }
 
 tags: { launched-by: hc2000 }
 

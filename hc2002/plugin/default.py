@@ -1,4 +1,5 @@
 # Load default set of plugins
+import hc2002.plugin.ami_search
 import hc2002.plugin.cloud_config
 import hc2002.plugin.manifest
 import hc2002.plugin.puppet
