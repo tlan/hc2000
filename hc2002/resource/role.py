@@ -1,4 +1,5 @@
 import boto
+import boto.exception
 import json
 
 import hc2002.aws.iam
@@ -121,7 +122,28 @@ def create(role):
 def delete(name):
     _setup_iam_connection()
 
-    iam.remove_role_from_instance_profile(name, name)
-    iam.delete_instance_profile(name)
-    _delete_role_policies(name)
-    iam.delete_role(name)
+    try:
+        iam.remove_role_from_instance_profile(name, name)
+    except boto.exception.BotoServerError as err:
+        if err.status != 404:
+        # Role or instance profile don't exist
+            raise
+
+    try:
+        iam.delete_instance_profile(name)
+    except boto.exception.BotoServerError as err:
+        # Function will fail with 409 error status if IAM instance-profile is
+        # attached to an IAM role with a different name. That's intentional as
+        # it is not an hc2002 role.
+
+        if err.status != 404:
+        # Instance profile doesn't exist
+            raise
+
+    try:
+        _delete_role_policies(name)
+        iam.delete_role(name)
+    except boto.exception.BotoServerError as err:
+        if err.status != 404:
+        # Role doesn't exist
+            raise
