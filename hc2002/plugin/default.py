@@ -5,3 +5,4 @@ import hc2002.plugin.puppet
 import hc2002.plugin.search
 import hc2002.plugin.symbolic_values
 import hc2002.plugin.user_data
+import hc2002.plugin.vpc
