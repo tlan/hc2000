@@ -52,8 +52,12 @@ def _multi_search(attribute, items, query,
 
     results = []
     for item in items:
-        results.extend(
-            _search(attribute, item, query, mappings, sort_key, item_index))
+        search_results = \
+                _search(attribute, item, query, mappings, sort_key, item_index)
+        if isinstance(search_results, list):
+            results.extend(search_results)
+        else:
+            results.append(search_results)
 
     if single_item and len(results) == 1:
         return results[0]
