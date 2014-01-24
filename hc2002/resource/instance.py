@@ -181,7 +181,7 @@ validator = [
     ),
 ]
 
-_ec2_block_device_mapping = {
+_block_device_mapping = {
     'source':       xl.switch({
                         'no-device':            xl.set_value('no_device', True),
                         'ephemeral[0-9]':       xl.set_key('ephemeral_name'),
@@ -195,21 +195,11 @@ _ec2_block_device_mapping = {
     'disposable':   xl.set_key('delete_on_termination'),
 }
 
-# For BlockDeviceMappings in LaunchConfigurations, use AWS parameter names
-# directly to work around boto bug
-_as_block_device_mapping = {
-    'source':       xl.switch({
-                        'ephemeral[0-9]':       xl.set_key('VirtualName'),
-                        'snap-[a-fA-F0-9]*':    xl.set_key('Ebs.SnapshotId'),
-                    }),
-    'size':         xl.set_key('Ebs.VolumeSize'),
-}
-
-def _xl_ec2_block_devices(key):
+def _xl_block_devices(key):
     def _block_devices(destination, value):
         bdm = boto.ec2.blockdevicemapping.BlockDeviceMapping()
         for k, v in value.iteritems():
-            params = xl.translate(_ec2_block_device_mapping, v,
+            params = xl.translate(_block_device_mapping, v,
                     { 'delete_on_termination': True })
             bdm[k] = boto.ec2.blockdevicemapping.BlockDeviceType(**params)
         destination[key] = bdm
@@ -217,17 +207,13 @@ def _xl_ec2_block_devices(key):
     return _block_devices
 
 def _xl_as_block_devices(key):
-    def _block_devices(destination, value):
-        mappings = []
-        for k, v in value.iteritems():
-            # boto.ec2.autoscale.launchconfig.BlockDeviceMapping does not get
-            # properly propagated to API call
-            bdm = xl.translate(_as_block_device_mapping, v)
-            bdm['DeviceName'] = k
-            mappings.append(bdm)
-        destination[key] = mappings
+    translator = _xl_block_devices(key)
 
-    return _block_devices
+    def _as_block_devices(destination, value):
+        translator(destination, value)
+        destination[key] = [ destination[key] ]
+
+    return _as_block_devices
 
 # boto.ec2.autoscale.Tag unconditionally outputs optional parameters ResourceId
 # and ResourceType, requiring them to be set. _Tag works around that
@@ -251,7 +237,7 @@ def _xl_as_tags(destination, value):
 _launch_instance_mapping = {
     'instance-type':        xl.set_key('instance_type'),
     'ebs-optimized':        xl.set_key('ebs_optimized'),
-    'block-devices':        _xl_ec2_block_devices('block_device_map'),
+    'block-devices':        _xl_block_devices('block_device_map'),
     'image':                xl.set_key('image_id'),
     'kernel':               xl.set_key('kernel_id'),
     'ramdisk':              xl.set_key('ramdisk_id'),
