@@ -100,5 +100,5 @@ bucket_name, _, destination_root = config.destination[5:].partition('/')
 
 s3 = get_s3_connection()
 bucket = s3.get_bucket(bucket_name, validate=False)
-upload_files(None, config.source, config.strip, bucket, destination_root, config.recursive)
+upload_files('', config.source, config.strip, bucket, destination_root, config.recursive)
 
