@@ -55,10 +55,33 @@ def get_credentials():
 def get_s3_connection():
     return boto.s3.connection.S3Connection(**get_credentials())
 
+def get_destination(source_file, source_strip, destination_root):
+    destination_suffix = source_file[len(source_strip):]
+    return destination_root + destination_suffix
+
+def upload_files(source_prefix, sources, source_strip, destination_bucket, destination_root, recursive):
+    for source in sources:
+        source_path = os.path.join(source_prefix, source)
+        if recursive and os.path.isdir(source_path):
+            files = []
+            try:
+                files = os.listdir(source_path)
+            except OSError, err:
+                print "Error: Failed to access file '%s'" % err.filename
+            else:
+                upload_files(source_path, files, source_strip,
+                             destination_bucket, destination_root,
+                             recursive)
+        else:
+            destination_file = get_destination(source_path, source_strip, destination_root)
+            destination_bucket.new_key(destination_file).set_contents_from_file(source_path)
+
 parser = argparse.ArgumentParser(description='Upload files to S3, under a common prefix.')
 
 parser.add_argument('--strip', default='', metavar='<prefix>',
         help='Common prefix to drop from source files. This requires that all sources start with the prefix.')
+parser.add_argument('--recursive', action="store_true",
+        help='If the source is a directory recursively copy its content')
 parser.add_argument('source', nargs='+', help='Files to upload')
 parser.add_argument('destination',
         help='Destination and common prefix for all uploaded files.')
@@ -73,11 +96,9 @@ for src in config.source:
 if not config.destination.startswith('s3://'):
     raise Exception('Unsupported destination URL: %s' % config.destination)
 
-bucket_name, _, key_prefix = config.destination[5:].partition('/')
+bucket_name, _, destination_root = config.destination[5:].partition('/')
 
 s3 = get_s3_connection()
 bucket = s3.get_bucket(bucket_name, validate=False)
-for src in config.source:
-    key_suffix = src[len(config.strip):]
-    key = key_prefix + key_suffix
-    bucket.new_key(key).set_contents_from_filename(src)
+upload_files(None, config.source, config.strip, bucket, destination_root, config.recursive)
+
