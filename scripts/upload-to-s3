@@ -74,7 +74,7 @@ def upload_files(source_prefix, sources, source_strip, destination_bucket, desti
                              recursive)
         else:
             destination_file = get_destination(source_path, source_strip, destination_root)
-            destination_bucket.new_key(destination_file).set_contents_from_file(source_path)
+            destination_bucket.new_key(destination_file).set_contents_from_filename(source_path)
 
 parser = argparse.ArgumentParser(description='Upload files to S3, under a common prefix.')
 
@@ -100,5 +100,5 @@ bucket_name, _, destination_root = config.destination[5:].partition('/')
 
 s3 = get_s3_connection()
 bucket = s3.get_bucket(bucket_name, validate=False)
-upload_files(None, config.source, config.strip, bucket, destination_root, config.recursive)
+upload_files('', config.source, config.strip, bucket, destination_root, config.recursive)
 
