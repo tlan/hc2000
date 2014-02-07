@@ -59,7 +59,7 @@ def get_destination(source_file, source_strip, destination_root):
     destination_suffix = source_file[len(source_strip):]
     return destination_root + destination_suffix
 
-def upload_files(source_prefix, sources, source_strip, destination_bucket, destination_root, recursive):
+def upload_files(source_prefix, sources, source_strip, destination_bucket, destination_root, recursive, acl):
     for source in sources:
         source_path = os.path.join(source_prefix, source)
         if recursive and os.path.isdir(source_path):
@@ -71,10 +71,13 @@ def upload_files(source_prefix, sources, source_strip, destination_bucket, desti
             else:
                 upload_files(source_path, files, source_strip,
                              destination_bucket, destination_root,
-                             recursive)
+                             recursive, acl)
         else:
             destination_file = get_destination(source_path, source_strip, destination_root)
-            destination_bucket.new_key(destination_file).set_contents_from_filename(source_path)
+            key = destination_bucket.new_key(destination_file)
+            key.set_contents_from_filename(source_path)
+            if acl:
+                key.set_acl(acl)
 
 parser = argparse.ArgumentParser(description='Upload files to S3, under a common prefix.')
 
@@ -82,6 +85,8 @@ parser.add_argument('--strip', default='', metavar='<prefix>',
         help='Common prefix to drop from source files. This requires that all sources start with the prefix.')
 parser.add_argument('--recursive', action="store_true",
         help='If the source is a directory recursively copy its content')
+parser.add_argument('--acl-public', action="store_const", const='public-read', dest='acl_public',
+        help='Specifies whether the uploaded files should have public read permissions. By default, uploaded files will follow policies already in place.')
 parser.add_argument('source', nargs='+', help='Files to upload')
 parser.add_argument('destination',
         help='Destination and common prefix for all uploaded files.')
@@ -100,5 +105,5 @@ bucket_name, _, destination_root = config.destination[5:].partition('/')
 
 s3 = get_s3_connection()
 bucket = s3.get_bucket(bucket_name, validate=False)
-upload_files('', config.source, config.strip, bucket, destination_root, config.recursive)
+upload_files('', config.source, config.strip, bucket, destination_root, config.recursive, config.acl_public)
 
