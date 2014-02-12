@@ -25,7 +25,7 @@ def _search(attribute, criteria, query,
                 parameters[translate_to] = filters.pop(translate_from)
 
     parameters['filters'] = filters
-    logger.info('Searching for %s matching: %s', attribute, parameters)
+    logger.debug('Searching for %s matching: %s', attribute, parameters)
 
     results = query(**parameters)
     if not results:
@@ -37,7 +37,7 @@ def _search(attribute, criteria, query,
     # 'id' attribute covers the intended use cases; hoist to argument, when it
     # doesn't
     results = [ r.id for r in results ]
-    logger.info('Match(es) found: %s' % results)
+    logger.debug('Match(es) found: %s' % results)
 
     if item_index:
         return results[item_index]

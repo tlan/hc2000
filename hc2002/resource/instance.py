@@ -3,6 +3,7 @@ import boto.exception
 import datetime
 import sys
 import time
+import logging
 
 import hc2002.aws.auto_scaling
 import hc2002.aws.ec2
@@ -12,6 +13,9 @@ import hc2002.transform as xf
 import hc2002.translation as xl
 from hc2002.validation import in_, match, one_of, one_or_more, prefix, \
         validate, validate_keys, validate_values, tolerant_dict
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
 _block_device = [
     dict,
@@ -345,7 +349,7 @@ _scheduled_auto_scaling_action = {
 }
 
 def _try_and_retry(message, operation, condition, retries=5):
-    sys.stdout.write(message)
+    logging.debug(message)
     sys.stdout.flush()
 
     result = None
@@ -382,12 +386,12 @@ def _launch_auto_scaling_group(instance):
         params = xl.translate(_create_launch_configuration_mapping, instance)
         launcher = boto.ec2.autoscale.launchconfig.LaunchConfiguration(
                 auto_scaling, **params)
-        _try_and_retry("* Creating launch configuration",
+        _try_and_retry("Creating launch configuration",
                 lambda: auto_scaling.create_launch_configuration(launcher),
                 lambda err: err.status == 400 and err.error_message.startswith(
                         'Invalid IamInstanceProfile: '))
     else:
-        print '=> Launch configuration already exists, skipping'
+        logger.debug('Launch configuration %s already exists, skipping', launcher)
 
     group = auto_scaling.get_all_groups(names=[ group_name ])
     if len(group) == 0:
@@ -396,7 +400,7 @@ def _launch_auto_scaling_group(instance):
             lb = instance['load-balancers']
             if not isinstance(lb, list):
                 lb = [ lb ]
-            print '* Checking that load balancers exist:', lb
+            logger.debug('Checking that load balancers exist: %s', lb)
             hc2002.resource.load_balancer.list(lb)
 
         params = xl.translate(_create_auto_scaling_group_mapping, instance)
@@ -404,7 +408,7 @@ def _launch_auto_scaling_group(instance):
                 auto_scaling, **params)
         auto_scaling.create_auto_scaling_group(group)
     else:
-        print '=> Auto-scaling group already exists, skipping'
+        logger.debug('Auto-scaling group already exists, skipping')
 
     # TODO: Handle load balancers
     # TODO: Handle updates to both launch configuration and group
@@ -425,8 +429,8 @@ def _launch_auto_scaling_group(instance):
             response = auto_scaling.make_request(
                     'PutScheduledUpdateGroupAction', params)
             if response.status != 200:
-                print 'Failed to schedule %s scaling action' % name
-                print response.read()
+                logger.warning('Failed to schedule %s scaling action', name)
+                logger.warning(response.read())
 
     return True
 
@@ -434,7 +438,7 @@ def _launch_spot_instance(instance):
     _setup_ec2_connection()
 
     params = xl.translate(_launch_spot_instance_mapping, instance)
-    return _try_and_retry("* Creating spot instance request",
+    return _try_and_retry("Creating spot instance request",
             lambda: ec2.request_spot_instances(**params),
             lambda err: err.status == 400 and err.error_message.endswith(
                 'Invalid IAM Instance Profile name'))
@@ -443,14 +447,14 @@ def _launch_instance(instance):
     _setup_ec2_connection()
 
     params = xl.translate(_launch_instance_mapping, instance)
-    reservation = _try_and_retry("* Launching instances",
+    reservation = _try_and_retry("Launching instances",
             lambda: ec2.run_instances(**params),
             lambda err: err.status == 400 and err.error_message.endswith(
                 'Invalid IAM Instance Profile name'))
 
     if 'tags' in instance:
         instances = [ inst.id for inst in reservation.instances ]
-        _try_and_retry("* Adding tags to instance(s)",
+        _try_and_retry("Adding tags to instance(s)",
                 lambda: ec2.create_tags(instances, instance['tags']),
                 lambda err: err.status == 400
                         and err.error_code == 'InvalidInstanceID.NotFound')
