@@ -5,6 +5,10 @@ import hc2002.plugin.user_data
 from hc2002.validation import validate
 import os.path
 import yaml
+import logging
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
 plugin.register_for_resource(__name__, 'hc2002.resource.instance')
 
@@ -57,7 +61,7 @@ def _validate_manifests(instance):
             entry = open(entry[5:], 'rb').read()
 
         if entry.startswith('#manifest\n'):
-            print "Validating manifest:\n", entry
+            logger.debug("Validating manifest %s:\n", entry)
             validate(hc2002.manifest, yaml.safe_load(entry), scope)
 
 def apply(instance):
