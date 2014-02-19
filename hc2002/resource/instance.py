@@ -335,30 +335,25 @@ _scheduled_auto_scaling_action = {
 }
 
 def _try_and_retry(message, operation, condition, retries=5):
-    logging.debug(message)
-    sys.stdout.flush()
 
     result = None
+    attempt = 0
+    msg_suffix = ''
     while True:
+        logging.debug(message + msg_suffix)
         try:
             result = operation()
             break
         except boto.exception.BotoServerError as err:
-            retries -= 1
-            if not retries \
+            attempt += 1
+            if retries <= attempt \
                     or not condition(err):
-                sys.stdout.write('\n')
                 raise
 
-            # Let the user know we're still here
-            sys.stdout.write('.')
-            sys.stdout.flush()
-
             # Sleep on it
+            msg_suffix = ' retry %i' % attempt
             time.sleep(10)
 
-    sys.stdout.write('\n')
-    sys.stdout.flush()
     return result
 
 def _launch_auto_scaling_group(instance):
