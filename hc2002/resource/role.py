@@ -125,7 +125,6 @@ def delete(name):
     try:
         iam.remove_role_from_instance_profile(name, name)
     except boto.exception.BotoServerError as err:
-        print err.status, err.error_code
         if err.status != 404 \
                 and (err.status != 400 or err.error_code != 'ValidationError'):
         # Role or instance profile don't exist
@@ -138,7 +137,6 @@ def delete(name):
         # attached to an IAM role with a different name. That's intentional as
         # it is not an hc2002 role.
 
-        print err.status, err.error_code
         if err.status != 404 \
                 and (err.status != 400 or err.error_code != 'ValidationError'):
         # Instance profile doesn't exist
@@ -148,7 +146,6 @@ def delete(name):
         _delete_role_policies(name)
         iam.delete_role(name)
     except boto.exception.BotoServerError as err:
-        print err.status, err.error_code
         if err.status != 404 \
                 and (err.status != 400 or err.error_code != 'ValidationError'):
         # Role doesn't exist
