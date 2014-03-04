@@ -8,7 +8,8 @@ _prefixes = ('availability-zone:', 'image:', 'kernel:', 'key:',
         'subnet:')
 
 def apply(instance):
-    def _resolve_symbol(value):
+    def resolve_symbol(original_value):
+        value = original_value
         visited = set()
         while isinstance(value, basestring) \
                 and value.startswith(prefix):
@@ -17,6 +18,13 @@ def apply(instance):
                     and value not in visited:
                 visited.add(value)
                 value = instance[value]
+            else:
+                if original_value == value:
+                    raise Exception("Unable to resolve '%s'" % value)
+                else:
+                    raise Exception(
+                            "While resolving '%s': unable to resolve '%s'"
+                                % (original_value, value))
         return value
 
     # Resolve symbols
@@ -26,9 +34,9 @@ def apply(instance):
             continue
 
         if isinstance(instance[key], basestring):
-            instance[key] = _resolve_symbol(instance[key])
+            instance[key] = resolve_symbol(instance[key])
         elif isinstance(instance[key], list):
-            instance[key] = map(_resolve_symbol, instance[key])
+            instance[key] = map(resolve_symbol, instance[key])
 
     # Drop resolvable symbols
     for key in instance.keys():
