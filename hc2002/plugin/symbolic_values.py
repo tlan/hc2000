@@ -5,7 +5,7 @@ plugin.register_for_resource(__name__, 'hc2002.resource.instance')
 
 _prefixes = ('availability-zone:', 'image:', 'kernel:', 'key:',
         'load-balancers:', 'ramdisk:', 'security-groups:', 'spot-price:',
-        'subnet:')
+        'subnet:', 'vpc:')
 
 def apply(instance):
     def resolve_symbol(original_value):
