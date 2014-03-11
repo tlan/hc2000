@@ -11,8 +11,9 @@ import hc2002.plugin
 import hc2002.resource.load_balancer
 import hc2002.transform as xf
 import hc2002.translation as xl
-from hc2002.validation import in_, match, one_of, one_or_more, prefix, \
-        validate, validate_keys, validate_values, tolerant_dict
+from hc2002.validation import at_most_one_of, in_, match, one_of, \
+        one_or_more, prefix, validate, validate_keys, validate_values, \
+        tolerant_dict
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -179,7 +180,11 @@ validator = [
     dict,
     tolerant_dict(_instance_dict),
     one_of(
-        validate_keys(in_(_run_instance_keys)),
+        [
+            validate_keys(in_(_run_instance_keys)),
+            at_most_one_of('count', 'min_count'),
+            at_most_one_of('count', 'max_count'),
+        ],
         validate_keys(in_(_spot_instance_keys)),
         validate_keys(in_(_launch_config_keys + _auto_scaling_group_keys)),
     ),
@@ -247,7 +252,10 @@ _launch_instance_mapping = {
     'ramdisk':              xl.set_key('ramdisk_id'),
     'min-count':            xl.set_key('min_count'),
     'max-count':            xl.set_key('max_count'),
-    'count':                xl.set_key('max_count'),
+    'count':                [
+                                xl.set_key('min_count'),
+                                xl.set_key('max_count'),
+                            ],
     'key':                  xl.set_key('key_name'),
     'role':                 xl.if_(xf.match('arn:aws:iam::'),
                                 xl.set_key('instance_profile_arn'),
