@@ -29,7 +29,7 @@ def _search(attribute, criteria, query,
 
     results = query(**parameters)
     if not results:
-        raise NotFound('No %s matching: %s', attribute, parameters)
+        raise NotFound('No %s matching: %s' % (attribute, parameters))
 
     if sort_key:
         results.sort(key=sort_key)
