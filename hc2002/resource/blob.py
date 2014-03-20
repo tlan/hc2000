@@ -16,6 +16,15 @@ def _get_key(url):
     bucket, key = _split_url(url)
     return s3.get_bucket(bucket, validate=False).new_key(key)
 
+def head(url):
+    _setup_s3_connection()
+
+    bucket, key = _split_url(url)
+    s3_bucket = s3.get_bucket(bucket, validate=False)
+    if s3_bucket and s3_bucket.get_key(key):
+        return True
+    return False
+
 def put(url, blob, replace=True):
     _setup_s3_connection()
 
