@@ -309,6 +309,7 @@ _create_launch_configuration_mapping = {
     'monitoring':               xl.set_key('instance_monitoring'),
     'ebs-optimized':            xl.set_key('ebs_optimized'),
     'block-devices':            _xl_as_block_devices('block_device_mappings'),
+    'associate-public-ip-address': xl.set_key('associate_public_ip_address'),
 }
 
 _create_auto_scaling_group_mapping = {
