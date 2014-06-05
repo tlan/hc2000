@@ -60,6 +60,7 @@ _instance_dict = {
     'role':                 one_or_more(basestring),
     'security-groups':      one_or_more(basestring),
     'subnet':               one_or_more(match('subnet-[0-9a-fA-F]+')),
+    'associate-public-ip-address': bool,
     'ip-address':           match('[0-9]{1,3}(\.[0-9]{1,3}){3}'),
     'availability-zone':    one_or_more(basestring),
     'placement-group':      basestring,
@@ -108,6 +109,7 @@ _run_instance_keys = [
     'security-groups',
     'subnet',
     'ip-address',
+    'associate-public-ip-address',
     'availability-zone',
     'placement-group',
     'tenancy',
@@ -130,6 +132,7 @@ _spot_instance_keys = [
     'role',
     'security-groups',
     'subnet',
+    'associate-public-ip-address',
     'availability-zone',
     'placement-group',
     'user-data',
@@ -152,6 +155,7 @@ _launch_config_keys = [
     'key',
     'role',
     'security-groups',
+    'associate-public-ip-address',
     'user-data',
     'monitoring',
     'ebs-optimized',
@@ -305,6 +309,7 @@ _create_launch_configuration_mapping = {
     'monitoring':               xl.set_key('instance_monitoring'),
     'ebs-optimized':            xl.set_key('ebs_optimized'),
     'block-devices':            _xl_as_block_devices('block_device_mappings'),
+    'associate-public-ip-address': xl.set_key('associate_public_ip_address'),
 }
 
 _create_auto_scaling_group_mapping = {
